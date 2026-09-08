@@ -17,7 +17,7 @@ export default async function MapaPage({
   const periodo = normalizePeriodo(periodoParam)
 
   const [points, oportunidades] = await Promise.all([
-    getActividadGeografica(),
+    getActividadGeografica(periodo),
     getOportunidades(),
   ])
 

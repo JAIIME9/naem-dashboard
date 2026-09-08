@@ -96,7 +96,7 @@ export function MapaPanel({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="overflow-hidden rounded-xl border border-border bg-card lg:col-span-2">
           <div className="h-[420px] w-full lg:h-[560px]">
-            <ActividadMap points={filteredPoints} />
+            <ActividadMap points={filteredPoints} oportunidades={oportunidades} />
           </div>
         </div>
 

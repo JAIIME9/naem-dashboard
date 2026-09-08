@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Building2,
   Calendar,
@@ -36,11 +37,13 @@ export function EmpresasGrid({
   data: Empresa[]
   oportunidades: Oportunidad[]
 }) {
+  const searchParams = useSearchParams()
+  const initialEmpresa = searchParams.get("empresa") ?? ""
   const [query, setQuery] = useState("")
   const [estado, setEstado] = useState("")
   const [sector, setSector] = useState("")
   const [municipioFiltro, setMunicipioFiltro] = useState("")
-  const [selected, setSelected] = useState<Empresa | null>(null)
+  const [selected, setSelected] = useState<Empresa | null>(() => data.find((e) => e.nombre === initialEmpresa) ?? null)
   const [localData, setLocalData] = useState<Empresa[]>(data)
 
   const sectores = useMemo(

@@ -57,13 +57,13 @@ export function AppHeader() {
   const navigateToOportunidad = (id: string) => {
     setShowResults(false)
     setQuery("")
-    router.push(`/oportunidades`)
+    router.push(`/oportunidades?oportunidad=${encodeURIComponent(id)}`)
   }
 
   const navigateToEmpresa = (nombre: string) => {
     setShowResults(false)
     setQuery("")
-    router.push(`/empresas`)
+    router.push(`/empresas?empresa=${encodeURIComponent(nombre)}`)
   }
 
   return (

@@ -30,9 +30,9 @@ export default async function ResumenPage({
   const [kpis, serie, distribucion, zonas, recientes] = await Promise.all([
     getKpis(periodo),
     getSerieOportunidades(periodo),
-    getDistribucionPerfiles(),
-    getZonasActividad(),
-    getOportunidadesRecientes(6),
+    getDistribucionPerfiles(periodo),
+    getZonasActividad(periodo),
+    getOportunidadesRecientes(6, periodo),
   ])
 
   return (

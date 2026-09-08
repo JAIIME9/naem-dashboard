@@ -38,13 +38,15 @@ export async function getOportunidades(): Promise<Oportunidad[]> {
   return oportunidades
 }
 
-export async function getOportunidadesRecientes(limite = 6): Promise<Oportunidad[]> {
+export async function getOportunidadesRecientes(limite = 6, periodo: Periodo = "30d"): Promise<Oportunidad[]> {
+  const factor = factorPeriodo[periodo]
+  const cantidad = Math.max(1, Math.min(limite, Math.round(limite * (periodo === "hoy" ? 0.55 : periodo === "7d" ? 0.8 : 1))))
   return [...oportunidades]
     .sort(
       (a, b) =>
         new Date(b.fechaDeteccion).getTime() - new Date(a.fechaDeteccion).getTime(),
     )
-    .slice(0, limite)
+    .slice(0, cantidad)
 }
 
 export async function getEmpresas(): Promise<Empresa[]> {
@@ -73,15 +75,17 @@ export async function getSerieOportunidades(periodo: Periodo = "30d"): Promise<P
   return serieOportunidades30d
 }
 
-export async function getDistribucionPerfiles(): Promise<DistribucionPerfil[]> {
-  return distribucionPerfiles
+export async function getDistribucionPerfiles(periodo: Periodo = "30d"): Promise<DistribucionPerfil[]> {
+  const f = factorPeriodo[periodo]
+  return distribucionPerfiles.map((item) => ({ ...item, valor: Math.max(1, Math.round(item.valor * f)) }))
 }
 
-export async function getZonasActividad(): Promise<ZonaActividad[]> {
-  return zonasActividad
+export async function getZonasActividad(periodo: Periodo = "30d"): Promise<ZonaActividad[]> {
+  const f = factorPeriodo[periodo]
+  return zonasActividad.map((item) => ({ ...item, valor: Math.max(1, Math.round(item.valor * f)) }))
 }
 
-export async function getActividadGeografica(): Promise<PuntoMapa[]> {
+export async function getActividadGeografica(periodo: Periodo = "30d"): Promise<PuntoMapa[]> {
   const porMunicipio = new Map<
     string,
     { provincia: string; oportunidades: number; empresas: Set<string> }
@@ -103,8 +107,8 @@ export async function getActividadGeografica(): Promise<PuntoMapa[]> {
       provincia: v.provincia,
       lat: municipioCoords[municipio].lat,
       lng: municipioCoords[municipio].lng,
-      oportunidades: v.oportunidades,
-      empresas: v.empresas.size,
+      oportunidades: Math.max(1, Math.round(v.oportunidades * factorPeriodo[periodo])),
+      empresas: Math.max(1, Math.round(v.empresas.size * factorPeriodo[periodo])),
     }))
     .sort((a, b) => b.oportunidades - a.oportunidades)
 }

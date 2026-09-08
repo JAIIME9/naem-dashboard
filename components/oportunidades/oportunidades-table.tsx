@@ -49,6 +49,7 @@ export function OportunidadesTable({ data }: { data: Oportunidad[] }) {
   const searchParams = useSearchParams()
   const initialPerfil = searchParams.get("perfil") ?? ""
   const initialMunicipio = searchParams.get("municipio") ?? ""
+  const initialOportunidad = searchParams.get("oportunidad") ?? ""
   const [query, setQuery] = useState("")
   const [estado, setEstado] = useState("")
   const [tipoPerfil, setTipoPerfil] = useState(initialPerfil)
@@ -58,7 +59,7 @@ export function OportunidadesTable({ data }: { data: Oportunidad[] }) {
   const [prioridad, setPrioridad] = useState("")
   const [fuente, setFuente] = useState("")
   const [fechaFiltro, setFechaFiltro] = useState("")
-  const [selected, setSelected] = useState<Oportunidad | null>(null)
+  const [selected, setSelected] = useState<Oportunidad | null>(() => data.find((o) => o.id === initialOportunidad) ?? null)
   const [localData, setLocalData] = useState<Oportunidad[]>(data)
 
   const tiposPerfil = useMemo(
