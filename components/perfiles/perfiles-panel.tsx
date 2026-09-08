@@ -8,8 +8,15 @@ import {
   Briefcase,
   Building2,
   Clock,
+  ClipboardList,
+  CookingPot,
+  HardHat,
   Sparkles,
+  Store,
   TrendingUp,
+  UtensilsCrossed,
+  Warehouse,
+  Wheat,
 } from "lucide-react"
 
 import { KpiCard } from "@/components/resumen/kpi-card"
@@ -39,13 +46,13 @@ const PERFILES_PRINCIPALES: TipoPerfil[] = [
 
 const ICONOS: Record<TipoPerfil, typeof Briefcase> = {
   Limpieza: Sparkles,
-  Camareros: Briefcase,
-  Cocineros: Briefcase,
-  Administrativos: Briefcase,
-  Almacén: Briefcase,
-  Dependientes: Briefcase,
-  Agricultura: Briefcase,
-  Construcción: Briefcase,
+  Camareros: UtensilsCrossed,
+  Cocineros: CookingPot,
+  Administrativos: ClipboardList,
+  Almacén: Warehouse,
+  Dependientes: Store,
+  Agricultura: Wheat,
+  Construcción: HardHat,
   Otros: Briefcase,
 }
 

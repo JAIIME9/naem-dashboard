@@ -2,7 +2,6 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
-import { AppHeader } from '@/components/app-header'
 import { AppSidebar } from '@/components/app-sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
@@ -17,7 +16,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'NAEM · Inteligencia comercial',
+  title: 'NAEM · EMPLEO ETT SL',
   description:
     'Panel de inteligencia comercial de NAEM: oportunidades de empleo detectadas automáticamente, empresas que contratan y actividad por zona.',
   generator: 'v0.app',
@@ -43,7 +42,6 @@ export default function RootLayout({
           <div className="flex min-h-screen">
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
-              <AppHeader />
               <main className="flex-1">{children}</main>
             </div>
           </div>

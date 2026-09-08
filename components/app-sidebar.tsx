@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { cn } from "@/lib/utils"
-import { marcaIcon as MarcaIcon, navInferior, navPrincipal, type NavItem } from "@/lib/nav"
+import { navInferior, navPrincipal, type NavItem } from "@/lib/nav"
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon
@@ -41,16 +41,13 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
-      <div className="flex h-14 items-center gap-2.5 px-5">
-        <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
-          <MarcaIcon className="size-4" strokeWidth={2} />
-        </div>
+      <div className="flex h-[88px] items-center border-b border-sidebar-border px-5">
         <div className="flex flex-col leading-none">
-          <span className="text-[15px] font-semibold tracking-tight text-foreground">
+          <span className="text-[28px] font-semibold tracking-[-0.055em] text-foreground">
             NAEM
           </span>
-          <span className="mt-0.5 text-[11px] text-muted-foreground">
-            Inteligencia comercial
+          <span className="mt-2 text-[10px] font-light tracking-[0.18em] text-muted-foreground">
+            EMPLEO ETT SL
           </span>
         </div>
       </div>
