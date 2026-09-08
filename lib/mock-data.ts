@@ -2,6 +2,8 @@ import type {
   DistribucionPerfil,
   Empresa,
   Municipio,
+  Notificacion,
+  OtroPerfil,
   Oportunidad,
   Perfil,
   PuntoSerie,
@@ -31,6 +33,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(12),
     estado: "Nueva",
     prioridad: "Alta",
+    descripcion:
+      "Buscamos camarero/a con experiencia en sala para restaurante de alta ocupación en primera línea de playa. Jornada partida, fines de semana incluidos. Se valorá conocimiento de carta de vinos y atención en terraza.",
+    notas: "",
   },
   {
     id: "opp_002",
@@ -47,6 +52,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(26),
     estado: "Nueva",
     prioridad: "Media",
+    descripcion:
+      "Peón agrícola para tareas de recolección y manejo de cítricos. Trabajo a la intemperie, jornada completa. Se requiere resistencia física y disponibilidad para turnos de temporada.",
+    notas: "",
   },
   {
     id: "opp_003",
@@ -63,6 +71,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(60),
     estado: "Revisada",
     prioridad: "Alta",
+    descripcion:
+      "Cocinero/a para hotel de 4 estrellas con buffet y servicio de carta. Experiencia mínima de 3 años en cocina de volumen. Conocimientos de HACCP y alérgenos.",
+    notas: "",
   },
   {
     id: "opp_004",
@@ -79,6 +90,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(120),
     estado: "Contactada",
     prioridad: "Media",
+    descripcion:
+      "Mozo/a de almacén para preparación de pedidos, control de stock y carga/descarga de camiones. Carné de carretilla elevadora valorable. Turno de mañana.",
+    notas: "",
   },
   {
     id: "opp_005",
@@ -95,6 +109,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(180),
     estado: "Nueva",
     prioridad: "Alta",
+    descripcion:
+      "Peón de construcción para obra civil en el entorno de Murcia. Experiencia en acabados y demoliciones. EPI proporcionado. Contrato por obra o servicio.",
+    notas: "",
   },
   {
     id: "opp_006",
@@ -111,6 +128,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(240),
     estado: "Interesante",
     prioridad: "Media",
+    descripcion:
+      "Personal de limpieza para oficinas y comunidades de propietarios. Jornada de tarde, lunes a viernes. Experiencia previa en limpieza de mantenimiento.",
+    notas: "",
   },
   {
     id: "opp_007",
@@ -127,6 +147,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(280),
     estado: "Revisada",
     prioridad: "Baja",
+    descripcion:
+      "Administrativo/a con conocimientos de contabilidad y facturación. Manejo de programas de gestión. Atención al cliente presencial y telefónica.",
+    notas: "",
   },
   {
     id: "opp_008",
@@ -143,6 +166,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(320),
     estado: "Nueva",
     prioridad: "Media",
+    descripcion:
+      "Dependiente/a para tienda de moda en centro comercial. Experiencia en retail y reposición. Disponibilidad para fines de semana y horario partido.",
+    notas: "",
   },
   {
     id: "opp_009",
@@ -159,6 +185,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(400),
     estado: "Contactada",
     prioridad: "Media",
+    descripcion:
+      "Ayudante de cocina para restaurante de tapas en el puerto. Tareas de mise en place, limpieza de zona y apoyo al cocinero principal. Jornada partida.",
+    notas: "",
   },
   {
     id: "opp_010",
@@ -175,6 +204,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(480),
     estado: "Nueva",
     prioridad: "Alta",
+    descripcion:
+      "Camarero/a de barra para cervecería de alto volumen. Manejo de caja, elaboración de raciones y atención rápida. Experiencia en hostelería de barra.",
+    notas: "",
   },
   {
     id: "opp_011",
@@ -191,6 +223,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(580),
     estado: "Revisada",
     prioridad: "Baja",
+    descripcion:
+      "Operario/a de almacén logístico con carretilla. Recepción de mercancía, picking y packing. Disponibilidad para turnos rotativos.",
+    notas: "",
   },
   {
     id: "opp_012",
@@ -207,6 +242,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(700),
     estado: "Interesante",
     prioridad: "Alta",
+    descripcion:
+      "Recolector/a de cítricos para campaña de temporada. Trabajo manual al aire libre, con escaleras y cajas. Contrato temporal de 3 meses.",
+    notas: "",
   },
   {
     id: "opp_013",
@@ -223,6 +261,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(880),
     estado: "Nueva",
     prioridad: "Media",
+    descripcion:
+      "Encargado/a de equipo de limpieza industrial. Coordinación de personal, control de calidad y gestión de pedidos de productos. Experiencia en supervisión.",
+    notas: "",
   },
   {
     id: "opp_014",
@@ -239,6 +280,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(980),
     estado: "Contactada",
     prioridad: "Media",
+    descripcion:
+      "Recepcionista de hotel con idiomas (inglés e italiano). Turnos rotativos de mañana y tarde. Manejo de PMS y atención al huésped.",
+    notas: "",
   },
   {
     id: "opp_015",
@@ -255,6 +299,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(1180),
     estado: "Descartada",
     prioridad: "Baja",
+    descripcion:
+      "Peón de obra para reformas interiores. Tareas de derribo, transporte de materiales y apoyo a oficiales. Experiencia mínima de 1 año.",
+    notas: "",
   },
   {
     id: "opp_016",
@@ -271,6 +318,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(1380),
     estado: "Nueva",
     prioridad: "Alta",
+    descripcion:
+      "Camarero/a de eventos y banquetes. Disponibilidad para fines de semana y horarios irregulares. Experiencia en servicio de catering y grandes eventos.",
+    notas: "",
   },
   {
     id: "opp_017",
@@ -287,6 +337,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(1580),
     estado: "Revisada",
     prioridad: "Media",
+    descripcion:
+      "Mozo/a de carga y descarga para empresa de transportes. Manejo de transpaleta manual. Trabajo físico, jornada de mañana.",
+    notas: "",
   },
   {
     id: "opp_018",
@@ -303,6 +356,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(1780),
     estado: "Nueva",
     prioridad: "Media",
+    descripcion:
+      "Dependiente/a para supermercado con sección de frescos. Reposición, atención en caja y control de caducidades. Turnos rotativos.",
+    notas: "",
   },
   {
     id: "opp_019",
@@ -319,6 +375,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(1980),
     estado: "Interesante",
     prioridad: "Alta",
+    descripcion:
+      "Cocinero/a de línea para grupo restaurativo con varias marcas. Especialización en cocina mediterránea y manejo de plancha. Experiencia de 2 años.",
+    notas: "",
   },
   {
     id: "opp_020",
@@ -335,6 +394,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(2380),
     estado: "Contactada",
     prioridad: "Baja",
+    descripcion:
+      "Auxiliar administrativo/a para asesoría fiscal y laboral. Gestión de documentos, atención al cliente y apoyo a gestores. Conocimientos de Ofimática.",
+    notas: "",
   },
   {
     id: "opp_021",
@@ -351,6 +413,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(2780),
     estado: "Nueva",
     prioridad: "Media",
+    descripcion:
+      "Personal de limpieza industrial para nave y maquinaria. Uo de productos específicos y maquinaria de presión. EPI obligatorio.",
+    notas: "",
   },
   {
     id: "opp_022",
@@ -367,6 +432,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(3180),
     estado: "Revisada",
     prioridad: "Alta",
+    descripcion:
+      "Peón agrícola de temporada para poda y recolección de granadas y limones. Trabajo en finca, jornada completa a la intemperie.",
+    notas: "",
   },
   {
     id: "opp_023",
@@ -383,6 +451,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(3580),
     estado: "Nueva",
     prioridad: "Media",
+    descripcion:
+      "Ayudante de camarero/a para chiringuito de playa. Recogida de mesas, apoyo al camarero y limpieza de zona. Temporada de verano.",
+    notas: "",
   },
   {
     id: "opp_024",
@@ -399,6 +470,9 @@ export const oportunidades: Oportunidad[] = [
     fechaDeteccion: hace(3980),
     estado: "Descartada",
     prioridad: "Baja",
+    descripcion:
+      "Repartidor/a con carné B para mensajería urgente. Conocimiento de la ciudad, disponibilidad inmediata y vehículo propio valorable.",
+    notas: "",
   },
 ]
 
@@ -414,7 +488,9 @@ export const empresas: Empresa[] = [
     sector: "Hostelería",
     oportunidades: 6,
     estadoComercial: "En seguimiento",
+    primeraDeteccion: hace(1380),
     ultimaActividad: hace(12),
+    notas: "Cadena con 4 locales en Alicante ciudad. Contacto: Laura Pérez, RRHH. Interesados en servicio de catering para eventos corporativos.",
   },
   {
     id: "emp_002",
@@ -427,7 +503,9 @@ export const empresas: Empresa[] = [
     sector: "Agricultura",
     oportunidades: 4,
     estadoComercial: "Sin contactar",
+    primeraDeteccion: hace(3180),
     ultimaActividad: hace(26),
+    notas: "Productora de cítricos y hortalizas. Contratación intensiva en campaña. Posible acuerdo de temporada.",
   },
   {
     id: "emp_003",
@@ -440,7 +518,9 @@ export const empresas: Empresa[] = [
     sector: "Hostelería",
     oportunidades: 5,
     estadoComercial: "Cliente",
+    primeraDeteccion: hace(1980),
     ultimaActividad: hace(60),
+    notas: "Hotel de 4 estrellas, cliente activo desde 2024. Contratación recurrente para temporada alta.",
   },
   {
     id: "emp_004",
@@ -453,7 +533,9 @@ export const empresas: Empresa[] = [
     sector: "Logística",
     oportunidades: 3,
     estadoComercial: "En seguimiento",
+    primeraDeteccion: hace(580),
     ultimaActividad: hace(120),
+    notas: "Plataforma logística en la Vega Baja. Demanda estable de mozos y carretilleros.",
   },
   {
     id: "emp_005",
@@ -466,7 +548,9 @@ export const empresas: Empresa[] = [
     sector: "Construcción",
     oportunidades: 4,
     estadoComercial: "Sin contactar",
+    primeraDeteccion: hace(1180),
     ultimaActividad: hace(180),
+    notas: "Empresa de construcción civil y reformas. Actividad en alza en el corredor Murcia-Alicante.",
   },
   {
     id: "emp_006",
@@ -479,7 +563,9 @@ export const empresas: Empresa[] = [
     sector: "Servicios",
     oportunidades: 2,
     estadoComercial: "En seguimiento",
+    primeraDeteccion: hace(880),
     ultimaActividad: hace(240),
+    notas: "Empresa de limpieza de comunidades y oficinas. Contratación mensual.",
   },
   {
     id: "emp_007",
@@ -492,7 +578,9 @@ export const empresas: Empresa[] = [
     sector: "Servicios",
     oportunidades: 1,
     estadoComercial: "Sin contactar",
+    primeraDeteccion: hace(280),
     ultimaActividad: hace(280),
+    notas: "Gestoría pequeña, contratación puntual de administrativos.",
   },
   {
     id: "emp_008",
@@ -505,7 +593,9 @@ export const empresas: Empresa[] = [
     sector: "Comercio",
     oportunidades: 2,
     estadoComercial: "Sin contactar",
+    primeraDeteccion: hace(320),
     ultimaActividad: hace(320),
+    notas: "Cadena de moda con 6 tiendas en Valencia y Alicante. Contratación de temporada.",
   },
   {
     id: "emp_009",
@@ -518,7 +608,9 @@ export const empresas: Empresa[] = [
     sector: "Agricultura",
     oportunidades: 3,
     estadoComercial: "En seguimiento",
+    primeraDeteccion: hace(700),
     ultimaActividad: hace(700),
+    notas: "Exportador de cítricos. Alta demanda en invierno y primavera.",
   },
   {
     id: "emp_010",
@@ -531,7 +623,9 @@ export const empresas: Empresa[] = [
     sector: "Logística",
     oportunidades: 2,
     estadoComercial: "Cliente",
+    primeraDeteccion: hace(580),
     ultimaActividad: hace(580),
+    notas: "Distribuidora de alimentación. Cliente desde 2023.",
   },
   {
     id: "emp_011",
@@ -544,7 +638,9 @@ export const empresas: Empresa[] = [
     sector: "Hostelería",
     oportunidades: 3,
     estadoComercial: "En seguimiento",
+    primeraDeteccion: hace(1380),
     ultimaActividad: hace(1380),
+    notas: "Empresa de catering para bodas y eventos. Picos de demanda en primavera y verano.",
   },
   {
     id: "emp_012",
@@ -557,7 +653,9 @@ export const empresas: Empresa[] = [
     sector: "Comercio",
     oportunidades: 2,
     estadoComercial: "Sin contactar",
+    primeraDeteccion: hace(1780),
     ultimaActividad: hace(1780),
+    notas: "Franquicia de supermercados. Contratación continua de dependientes y reponedores.",
   },
   {
     id: "emp_013",
@@ -570,7 +668,9 @@ export const empresas: Empresa[] = [
     sector: "Hostelería",
     oportunidades: 4,
     estadoComercial: "Cliente",
+    primeraDeteccion: hace(1980),
     ultimaActividad: hace(1980),
+    notas: "Grupo con 3 restaurantes en Murcia. Cliente recurrente.",
   },
   {
     id: "emp_014",
@@ -583,7 +683,9 @@ export const empresas: Empresa[] = [
     sector: "Agricultura",
     oportunidades: 5,
     estadoComercial: "En seguimiento",
+    primeraDeteccion: hace(3180),
     ultimaActividad: hace(3180),
+    notas: "Productora y envasadora de fruta. Contratación masiva en campaña de granada.",
   },
 ]
 
@@ -599,6 +701,51 @@ export const perfiles: Perfil[] = [
   { id: "per_009", nombre: "Otros", activo: false },
 ]
 
+export const otrosPerfiles: OtroPerfil[] = [
+  {
+    id: "otr_001",
+    nombre: "Repartidor/a",
+    oportunidades: 4,
+    empresas: 2,
+    ultimaDeteccion: hace(3980),
+  },
+  {
+    id: "otr_002",
+    nombre: "Jardinero/a",
+    oportunidades: 2,
+    empresas: 1,
+    ultimaDeteccion: hace(5200),
+  },
+  {
+    id: "otr_003",
+    nombre: "Técnico/a de mantenimiento",
+    oportunidades: 3,
+    empresas: 2,
+    ultimaDeteccion: hace(6400),
+  },
+  {
+    id: "otr_004",
+    nombre: "Conductor/a",
+    oportunidades: 2,
+    empresas: 1,
+    ultimaDeteccion: hace(7800),
+  },
+  {
+    id: "otr_005",
+    nombre: "Recepcionista",
+    oportunidades: 1,
+    empresas: 1,
+    ultimaDeteccion: hace(980),
+  },
+  {
+    id: "otr_006",
+    nombre: "Operario/a de producción",
+    oportunidades: 2,
+    empresas: 1,
+    ultimaDeteccion: hace(4200),
+  },
+]
+
 export const municipios: Municipio[] = [
   { id: "mun_001", municipio: "Alicante", provincia: "Alicante", zona: "Alicante", activo: true },
   { id: "mun_002", municipio: "Elche", provincia: "Alicante", zona: "Elche", activo: true },
@@ -609,14 +756,32 @@ export const municipios: Municipio[] = [
   { id: "mun_007", municipio: "Torrevieja", provincia: "Alicante", zona: "Orihuela", activo: false },
 ]
 
-// Serie de oportunidades detectadas (últimos 30 días).
-export const serieOportunidades: PuntoSerie[] = (() => {
+// Serie de oportunidades detectadas (últimos 30 días, evolución diaria).
+export const serieOportunidades30d: PuntoSerie[] = (() => {
   const base = [
     2, 3, 3, 4, 3, 5, 4, 6, 5, 7, 6, 5, 8, 7, 9, 8, 6, 10, 9, 11, 8, 12, 10, 9,
     13, 11, 14, 12, 15, 13,
   ]
   return base.map((valor, i) => ({
     fecha: new Date(ahora - (base.length - 1 - i) * 86_400_000).toISOString(),
+    valor,
+  }))
+})()
+
+// Serie de los últimos 7 días (evolución diaria).
+export const serieOportunidades7d: PuntoSerie[] = (() => {
+  const base = [9, 11, 8, 12, 10, 13, 15]
+  return base.map((valor, i) => ({
+    fecha: new Date(ahora - (base.length - 1 - i) * 86_400_000).toISOString(),
+    valor,
+  }))
+})()
+
+// Serie de hoy (evolución por horas).
+export const serieOportunidadesHoy: PuntoSerie[] = (() => {
+  const base = [1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 3, 2, 4]
+  return base.map((valor, i) => ({
+    fecha: new Date(ahora - (base.length - 1 - i) * 3_600_000).toISOString(),
     valor,
   }))
 })()
@@ -639,4 +804,35 @@ export const zonasActividad: ZonaActividad[] = [
   { zona: "Murcia", valor: 18 },
   { zona: "Orihuela", valor: 12 },
   { zona: "Valencia", valor: 9 },
+]
+
+export const notificaciones: Notificacion[] = [
+  {
+    id: "not_001",
+    texto: "8 nuevas oportunidades detectadas",
+    tiempo: "Hace 12 min",
+    leida: false,
+    tipo: "oportunidad",
+  },
+  {
+    id: "not_002",
+    texto: "Nueva empresa detectada en Elche",
+    tiempo: "Hace 26 min",
+    leida: false,
+    tipo: "empresa",
+  },
+  {
+    id: "not_003",
+    texto: "Agricultura aumenta su actividad",
+    tiempo: "Hace 1 h",
+    leida: false,
+    tipo: "perfil",
+  },
+  {
+    id: "not_004",
+    texto: "Actualización completada correctamente",
+    tiempo: "Hace 2 h",
+    leida: true,
+    tipo: "sistema",
+  },
 ]

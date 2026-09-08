@@ -29,7 +29,7 @@ export default async function ResumenPage({
 
   const [kpis, serie, distribucion, zonas, recientes] = await Promise.all([
     getKpis(periodo),
-    getSerieOportunidades(),
+    getSerieOportunidades(periodo),
     getDistribucionPerfiles(),
     getZonasActividad(),
     getOportunidadesRecientes(6),
@@ -49,7 +49,7 @@ export default async function ResumenPage({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <OportunidadesChart data={serie} />
+          <OportunidadesChart data={serie} periodo={periodo} />
         </div>
         <PerfilesDonut data={distribucion} />
       </div>

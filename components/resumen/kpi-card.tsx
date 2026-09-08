@@ -12,19 +12,15 @@ export function KpiCard({ kpi }: { kpi: Kpi }) {
           {kpi.valor.toLocaleString("es-ES")}
         </span>
         {typeof kpi.delta === "number" && (
-          <span
-            className={cn(
-              "mb-1 inline-flex items-center gap-0.5 rounded-full bg-success/10 px-1.5 py-0.5 text-xs font-medium text-success",
-            )}
-          >
+          <span className="mb-1 inline-flex items-center gap-0.5 rounded-full bg-success/10 px-1.5 py-0.5 text-xs font-medium text-success">
             <ArrowUpRight className="size-3" strokeWidth={2.5} />
-            {kpi.delta}
+            {kpi.delta}%
           </span>
         )}
       </div>
       {kpi.deltaEtiqueta ? (
         <p className="text-xs text-muted-foreground/80">
-          <span className="text-success">+{kpi.delta}</span> {kpi.deltaEtiqueta}
+          <span className="text-success">+{kpi.delta}%</span> {kpi.deltaEtiqueta}
         </p>
       ) : (
         <p className="text-xs text-muted-foreground/60">Sin gestionar todavía</p>

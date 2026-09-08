@@ -42,6 +42,8 @@ export interface Oportunidad {
   fechaDeteccion: string // ISO
   estado: EstadoOportunidad
   prioridad: Prioridad
+  descripcion: string
+  notas: string
 }
 
 export interface Empresa {
@@ -55,13 +57,23 @@ export interface Empresa {
   sector: string
   oportunidades: number
   estadoComercial: EstadoComercial
+  primeraDeteccion: string // ISO
   ultimaActividad: string // ISO
+  notas: string
 }
 
 export interface Perfil {
   id: string
   nombre: TipoPerfil
   activo: boolean
+}
+
+export interface OtroPerfil {
+  id: string
+  nombre: string
+  oportunidades: number
+  empresas: number
+  ultimaDeteccion: string // ISO
 }
 
 export interface Municipio {
@@ -95,4 +107,12 @@ export interface DistribucionPerfil {
 export interface ZonaActividad {
   zona: string
   valor: number
+}
+
+export interface Notificacion {
+  id: string
+  texto: string
+  tiempo: string
+  leida: boolean
+  tipo: "oportunidad" | "empresa" | "perfil" | "sistema"
 }

@@ -11,7 +11,7 @@ import {
 } from "recharts"
 
 import { fechaCorta, fechaDia } from "@/lib/format"
-import type { PuntoSerie } from "@/lib/types"
+import type { Periodo, PuntoSerie } from "@/lib/types"
 
 interface TooltipProps {
   active?: boolean
@@ -31,8 +31,28 @@ function ChartTooltip({ active, payload }: TooltipProps) {
   )
 }
 
-export function OportunidadesChart({ data }: { data: PuntoSerie[] }) {
+function formatHour(iso: string): string {
+  return new Date(iso).toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+export function OportunidadesChart({
+  data,
+  periodo,
+}: {
+  data: PuntoSerie[]
+  periodo: Periodo
+}) {
   const total = data.reduce((acc, p) => acc + p.valor, 0)
+  const isHoy = periodo === "hoy"
+  const etiqueta =
+    periodo === "hoy"
+      ? "Hoy"
+      : periodo === "7d"
+        ? "Últimos 7 días"
+        : "Últimos 30 días"
 
   return (
     <section className="flex h-full flex-col rounded-xl border border-border bg-card p-5">
@@ -41,7 +61,7 @@ export function OportunidadesChart({ data }: { data: PuntoSerie[] }) {
           <h2 className="text-sm font-medium text-foreground">
             Oportunidades detectadas
           </h2>
-          <p className="text-xs text-muted-foreground">Últimos 30 días</p>
+          <p className="text-xs text-muted-foreground">{etiqueta}</p>
         </div>
         <div className="text-right">
           <p className="text-xl font-semibold tabular-nums text-foreground">{total}</p>
@@ -65,7 +85,7 @@ export function OportunidadesChart({ data }: { data: PuntoSerie[] }) {
             />
             <XAxis
               dataKey="fecha"
-              tickFormatter={fechaCorta}
+              tickFormatter={isHoy ? formatHour : fechaCorta}
               tickLine={false}
               axisLine={false}
               minTickGap={32}

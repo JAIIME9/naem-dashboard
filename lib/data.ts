@@ -3,9 +3,13 @@ import {
   distribucionPerfiles,
   empresas,
   municipios,
+  notificaciones,
   oportunidades,
+  otrosPerfiles,
   perfiles,
-  serieOportunidades,
+  serieOportunidades30d,
+  serieOportunidades7d,
+  serieOportunidadesHoy,
   zonasActividad,
 } from "./mock-data"
 import type {
@@ -13,6 +17,8 @@ import type {
   Empresa,
   Kpi,
   Municipio,
+  Notificacion,
+  OtroPerfil,
   Oportunidad,
   Perfil,
   Periodo,
@@ -49,12 +55,22 @@ export async function getPerfiles(): Promise<Perfil[]> {
   return perfiles
 }
 
+export async function getOtrosPerfiles(): Promise<OtroPerfil[]> {
+  return otrosPerfiles
+}
+
 export async function getMunicipios(): Promise<Municipio[]> {
   return municipios
 }
 
-export async function getSerieOportunidades(): Promise<PuntoSerie[]> {
-  return serieOportunidades
+export async function getNotificaciones(): Promise<Notificacion[]> {
+  return notificaciones
+}
+
+export async function getSerieOportunidades(periodo: Periodo = "30d"): Promise<PuntoSerie[]> {
+  if (periodo === "hoy") return serieOportunidadesHoy
+  if (periodo === "7d") return serieOportunidades7d
+  return serieOportunidades30d
 }
 
 export async function getDistribucionPerfiles(): Promise<DistribucionPerfil[]> {
@@ -99,35 +115,49 @@ const factorPeriodo: Record<Periodo, number> = {
   "30d": 1,
 }
 
+const etiquetaPeriodo: Record<Periodo, string> = {
+  hoy: "hoy",
+  "7d": "en 7 días",
+  "30d": "en 30 días",
+}
+
 export async function getKpis(periodo: Periodo = "30d"): Promise<Kpi[]> {
   const f = factorPeriodo[periodo]
   const escala = (n: number) => Math.max(1, Math.round(n * f))
+  const deltaPct = periodo === "hoy" ? 12 : periodo === "7d" ? 16 : 14
   return [
     {
       id: "nuevas",
       etiqueta: "Nuevas oportunidades",
       valor: escala(126),
-      delta: escala(18),
-      deltaEtiqueta: "esta semana",
+      delta: deltaPct,
+      deltaEtiqueta: `vs. ${periodo === "hoy" ? "ayer" : "periodo anterior"}`,
     },
     {
       id: "empresas",
       etiqueta: "Empresas detectadas",
       valor: escala(84),
-      delta: escala(12),
-      deltaEtiqueta: "esta semana",
+      delta: 9,
+      deltaEtiqueta: `vs. ${periodo === "hoy" ? "ayer" : "periodo anterior"}`,
     },
     {
       id: "por-contactar",
       etiqueta: "Por contactar",
       valor: escala(47),
+      deltaEtiqueta: etiquetaPeriodo[periodo],
     },
     {
       id: "contactadas",
       etiqueta: "Contactadas",
       valor: escala(31),
-      delta: escala(8),
-      deltaEtiqueta: "esta semana",
+      delta: 8,
+      deltaEtiqueta: `vs. ${periodo === "hoy" ? "ayer" : "periodo anterior"}`,
     },
   ]
+}
+
+export function etiquetaPeriodoTexto(periodo: Periodo): string {
+  if (periodo === "hoy") return "Hoy"
+  if (periodo === "7d") return "Últimos 7 días"
+  return "Últimos 30 días"
 }

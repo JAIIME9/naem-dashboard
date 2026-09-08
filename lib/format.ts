@@ -27,3 +27,13 @@ export function fechaDia(iso: string): string {
     month: "long",
   })
 }
+
+export function fechaCompleta(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}

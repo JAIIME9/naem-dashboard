@@ -1,14 +1,30 @@
 import { MapaPanel } from "@/components/mapa/mapa-panel"
 import { PageHeader } from "@/components/page-header"
-import { getActividadGeografica } from "@/lib/data"
+import { getActividadGeografica, getOportunidades } from "@/lib/data"
+import type { Periodo } from "@/lib/types"
 
-export default async function MapaPage() {
-  const points = await getActividadGeografica()
+function normalizePeriodo(value: string | string[] | undefined): Periodo {
+  const v = Array.isArray(value) ? value[0] : value
+  return v === "hoy" || v === "7d" || v === "30d" ? v : "30d"
+}
+
+export default async function MapaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string }>
+}) {
+  const { periodo: periodoParam } = await searchParams
+  const periodo = normalizePeriodo(periodoParam)
+
+  const [points, oportunidades] = await Promise.all([
+    getActividadGeografica(),
+    getOportunidades(),
+  ])
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 p-5 sm:p-6 lg:p-8">
       <PageHeader />
-      <MapaPanel points={points} />
+      <MapaPanel points={points} oportunidades={oportunidades} periodo={periodo} />
     </div>
   )
 }

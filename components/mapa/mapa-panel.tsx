@@ -1,9 +1,14 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import dynamic from "next/dynamic"
-import { MapPin } from "lucide-react"
+import Link from "next/link"
+import { ArrowRight, MapPin } from "lucide-react"
 
+import { FilterSelect } from "@/components/filter-select"
+import { PeriodSelector } from "@/components/period-selector"
 import type { PuntoMapa } from "@/lib/geo"
+import type { Oportunidad, Periodo } from "@/lib/types"
 
 const ActividadMap = dynamic(() => import("./actividad-map"), {
   ssr: false,
@@ -14,49 +19,143 @@ const ActividadMap = dynamic(() => import("./actividad-map"), {
   ),
 })
 
-export function MapaPanel({ points }: { points: PuntoMapa[] }) {
-  const totalOportunidades = points.reduce((acc, p) => acc + p.oportunidades, 0)
-  const max = Math.max(...points.map((p) => p.oportunidades), 1)
+export function MapaPanel({
+  points,
+  oportunidades,
+  periodo,
+}: {
+  points: PuntoMapa[]
+  oportunidades: Oportunidad[]
+  periodo: Periodo
+}) {
+  const [perfil, setPerfil] = useState("")
+  const [zona, setZona] = useState("")
+  const [provincia, setProvincia] = useState("")
+
+  const tiposPerfil = useMemo(
+    () => [...new Set(oportunidades.map((o) => o.tipoPerfil))].sort(),
+    [oportunidades],
+  )
+  const zonas = useMemo(
+    () => [...new Set(oportunidades.map((o) => o.zona))].sort(),
+    [oportunidades],
+  )
+  const provincias = useMemo(
+    () => [...new Set(oportunidades.map((o) => o.provincia))].sort(),
+    [oportunidades],
+  )
+
+  const filteredPoints = useMemo(() => {
+    if (!perfil && !zona && !provincia) return points
+    return points.filter((p) => {
+      const opps = oportunidades.filter(
+        (o) => o.municipio === p.municipio,
+      )
+      if (perfil && !opps.some((o) => o.tipoPerfil === perfil)) return false
+      if (zona && p.zona !== zona) return false
+      if (provincia && p.provincia !== provincia) return false
+      return true
+    })
+  }, [points, oportunidades, perfil, zona, provincia])
+
+  const totalOportunidades = filteredPoints.reduce((acc, p) => acc + p.oportunidades, 0)
+  const max = Math.max(...filteredPoints.map((p) => p.oportunidades), 1)
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="overflow-hidden rounded-xl border border-border bg-card lg:col-span-2">
-        <div className="h-[420px] w-full lg:h-[560px]">
-          <ActividadMap points={points} />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <FilterSelect
+          ariaLabel="Filtrar por perfil"
+          placeholder="Todos los perfiles"
+          value={perfil}
+          onChange={setPerfil}
+          options={tiposPerfil.map((t) => ({ value: t, label: t }))}
+          className="sm:w-40"
+        />
+        <FilterSelect
+          ariaLabel="Filtrar por zona"
+          placeholder="Todas las zonas"
+          value={zona}
+          onChange={setZona}
+          options={zonas.map((z) => ({ value: z, label: z }))}
+          className="sm:w-36"
+        />
+        <FilterSelect
+          ariaLabel="Filtrar por provincia"
+          placeholder="Todas las provincias"
+          value={provincia}
+          onChange={setProvincia}
+          options={provincias.map((p) => ({ value: p, label: p }))}
+          className="sm:w-40"
+        />
+        <div className="sm:ml-auto">
+          <PeriodSelector value={periodo} />
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <MapPin className="size-4 text-muted-foreground" strokeWidth={1.75} />
-            <h2 className="text-sm font-medium text-foreground">Municipios activos</h2>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="overflow-hidden rounded-xl border border-border bg-card lg:col-span-2">
+          <div className="h-[420px] w-full lg:h-[560px]">
+            <ActividadMap points={filteredPoints} />
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {points.length} municipios · {totalOportunidades} oportunidades
-          </p>
+        </div>
 
-          <ul className="mt-4 flex flex-col gap-3">
-            {points.map((p) => (
-              <li key={p.municipio} className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{p.municipio}</span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {p.oportunidades}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className="h-full rounded-full bg-brand"
-                    style={{ width: `${(p.oportunidades / max) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {p.empresas} {p.empresas === 1 ? "empresa" : "empresas"} · {p.provincia}
-                </span>
-              </li>
-            ))}
-          </ul>
+        <div className="flex flex-col gap-4">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <MapPin className="size-4 text-muted-foreground" strokeWidth={1.75} />
+              <h2 className="text-sm font-medium text-foreground">Municipios con más actividad</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {filteredPoints.length} municipios · {totalOportunidades} oportunidades
+            </p>
+
+            <ul className="mt-4 flex flex-col gap-3">
+              {filteredPoints.map((p) => {
+                const topPerfiles = oportunidades
+                  .filter((o) => o.municipio === p.municipio)
+                  .reduce<Record<string, number>>((acc, o) => {
+                    acc[o.tipoPerfil] = (acc[o.tipoPerfil] || 0) + 1
+                    return acc
+                  }, {})
+                const top3 = Object.entries(topPerfiles)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 3)
+
+                return (
+                  <li key={p.municipio} className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-foreground">{p.municipio}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {p.oportunidades}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-brand"
+                        style={{ width: `${(p.oportunidades / max) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {p.empresas} {p.empresas === 1 ? "empresa" : "empresas"} · {p.provincia}
+                      </span>
+                      <span className="hidden text-xs text-muted-foreground sm:inline">
+                        {top3.map((t) => t[0]).join(" · ")}
+                      </span>
+                    </div>
+                    <Link
+                      href={`/oportunidades?municipio=${encodeURIComponent(p.municipio)}`}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-brand transition-colors hover:text-brand/80"
+                    >
+                      Ver oportunidades
+                      <ArrowRight className="size-3" strokeWidth={2} />
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         </div>
       </div>
     </div>
