@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
+  BellRing,
   Briefcase,
   Calendar,
   CheckCircle2,
@@ -10,10 +11,13 @@ import {
   CookingPot,
   Globe,
   HardHat,
+  Inbox,
   Loader2,
   Mail,
   MapPin,
+  MessageSquareReply,
   Phone,
+  RefreshCw,
   Search,
   SearchX,
   Send,
@@ -52,6 +56,14 @@ const ICONOS: Record<TipoPerfil, typeof Briefcase> = {
   Otros: Briefcase,
 }
 
+type RespuestaCliente = {
+  from: string
+  subject: string
+  date: string
+  body: string
+  uid: string
+}
+
 function PerfilLogo({ tipoPerfil = "Otros" }: { tipoPerfil?: TipoPerfil }) {
   const Icon = ICONOS[tipoPerfil] ?? Briefcase
   return (
@@ -59,6 +71,17 @@ function PerfilLogo({ tipoPerfil = "Otros" }: { tipoPerfil?: TipoPerfil }) {
       <Icon className="size-5" strokeWidth={1.8} />
     </div>
   )
+}
+
+function fechaRespuesta(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }
 
 export function EmpresasGrid({
@@ -81,7 +104,11 @@ export function EmpresasGrid({
   const [localData, setLocalData] = useState<Empresa[]>(data)
   const [contactando, setContactando] = useState<string | null>(null)
   const [enviados, setEnviados] = useState<Set<string>>(new Set())
+  const [simulados, setSimulados] = useState<Set<string>>(new Set())
   const [errorContacto, setErrorContacto] = useState("")
+  const [respuestas, setRespuestas] = useState<Record<string, RespuestaCliente>>({})
+  const [comprobandoRespuestas, setComprobandoRespuestas] = useState(false)
+  const [errorRespuestas, setErrorRespuestas] = useState("")
 
   const sectores = useMemo(
     () => [...new Set(localData.map((e) => e.sector))].sort(),
@@ -108,6 +135,48 @@ export function EmpresasGrid({
       return true
     })
   }, [localData, query, estado, sector, municipioFiltro])
+
+  const empresasComprobables = useMemo(
+    () =>
+      localData
+        .filter((e) => !e.email.toLowerCase().endsWith("@example.invalid"))
+        .map((e) => ({ id: e.id, email: e.email })),
+    [localData],
+  )
+
+  const comprobarRespuestas = useCallback(async (silencioso = false) => {
+    if (empresasComprobables.length === 0) return
+    if (!silencioso) setComprobandoRespuestas(true)
+    setErrorRespuestas("")
+
+    try {
+      const response = await fetch("/api/company-replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ companies: empresasComprobables }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(result?.error || "No se pudieron comprobar las respuestas")
+      }
+      setRespuestas(result?.replies ?? {})
+    } catch (error) {
+      setErrorRespuestas(
+        error instanceof Error ? error.message : "No se pudieron comprobar las respuestas",
+      )
+    } finally {
+      if (!silencioso) setComprobandoRespuestas(false)
+    }
+  }, [empresasComprobables])
+
+  useEffect(() => {
+    void comprobarRespuestas(true)
+    const interval = window.setInterval(() => {
+      void comprobarRespuestas(true)
+    }, 60_000)
+    return () => window.clearInterval(interval)
+  }, [comprobarRespuestas])
 
   const updateEstado = (id: string, nuevoEstado: EstadoComercial) => {
     setLocalData((prev) =>
@@ -161,6 +230,9 @@ export function EmpresasGrid({
       }
 
       setEnviados((prev) => new Set([...prev, empresa.id]))
+      if (result?.simulated) {
+        setSimulados((prev) => new Set([...prev, empresa.id]))
+      }
       updateEstado(empresa.id, "En seguimiento")
     } catch (error) {
       setErrorContacto(
@@ -171,8 +243,38 @@ export function EmpresasGrid({
     }
   }
 
+  const respuestaIds = Object.keys(respuestas)
+  const primeraEmpresaConRespuesta = respuestaIds.length
+    ? localData.find((e) => e.id === respuestaIds[0]) ?? null
+    : null
+
   return (
     <div className="flex flex-col gap-4">
+      {respuestaIds.length > 0 && (
+        <button
+          type="button"
+          onClick={() => primeraEmpresaConRespuesta && setSelected(primeraEmpresaConRespuesta)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left transition-colors hover:bg-emerald-100/70"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <BellRing className="size-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-emerald-950">
+                {respuestaIds.length === 1
+                  ? "Tienes una respuesta de un cliente"
+                  : `Tienes ${respuestaIds.length} respuestas de clientes`}
+              </span>
+              <span className="block truncate text-xs text-emerald-800/80">
+                Puedes leerla directamente desde la ficha de la empresa.
+              </span>
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-emerald-800">Ver respuesta</span>
+        </button>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative flex-1 sm:min-w-64">
           <Search
@@ -218,9 +320,21 @@ export function EmpresasGrid({
           {filtradas.length} {filtradas.length === 1 ? "empresa" : "empresas"}
           {filtradas.length !== localData.length ? ` de ${localData.length}` : ""}
         </p>
-        {errorContacto && (
-          <p className="text-xs font-medium text-destructive">{errorContacto}</p>
-        )}
+        <div className="flex items-center gap-3">
+          {errorContacto && (
+            <p className="text-xs font-medium text-destructive">{errorContacto}</p>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={comprobandoRespuestas}
+            onClick={() => void comprobarRespuestas(false)}
+          >
+            <RefreshCw className={`size-3.5 ${comprobandoRespuestas ? "animate-spin" : ""}`} />
+            Revisar respuestas
+          </Button>
+        </div>
       </div>
 
       {filtradas.length === 0 ? (
@@ -235,12 +349,18 @@ export function EmpresasGrid({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtradas.map((e) => {
             const enviado = enviados.has(e.id)
+            const simulado = simulados.has(e.id)
             const cargando = contactando === e.id
+            const respuesta = respuestas[e.id]
             return (
               <article
                 key={e.id}
                 onClick={() => setSelected(e)}
-                className="flex cursor-pointer flex-col gap-4 rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-sm"
+                className={`flex cursor-pointer flex-col gap-4 rounded-xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-sm ${
+                  respuesta
+                    ? "border-emerald-300 ring-1 ring-emerald-100"
+                    : "border-border hover:border-brand/25"
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
@@ -257,6 +377,15 @@ export function EmpresasGrid({
                   </div>
                   <EstadoComercialBadge estado={e.estadoComercial} />
                 </div>
+
+                {respuesta && (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">
+                    <MessageSquareReply className="size-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                      Cliente respondió: {respuesta.subject}
+                    </span>
+                  </div>
+                )}
 
                 <dl className="flex flex-col gap-1.5 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -290,7 +419,7 @@ export function EmpresasGrid({
                     ) : enviado ? (
                       <>
                         <CheckCircle2 className="size-4" />
-                        Email enviado
+                        {simulado ? "Email demo simulado" : "Email enviado"}
                       </>
                     ) : (
                       <>
@@ -335,7 +464,9 @@ export function EmpresasGrid({
               ) : enviados.has(selected.id) ? (
                 <>
                   <CheckCircle2 className="size-4" />
-                  Email enviado correctamente
+                  {simulados.has(selected.id)
+                    ? "Email de demostración simulado"
+                    : "Email enviado correctamente"}
                 </>
               ) : (
                 <>
@@ -344,6 +475,63 @@ export function EmpresasGrid({
                 </>
               )}
             </Button>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Inbox className="size-4 text-brand" />
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Respuesta del cliente
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={comprobandoRespuestas}
+                  onClick={() => void comprobarRespuestas(false)}
+                >
+                  <RefreshCw className={`size-3.5 ${comprobandoRespuestas ? "animate-spin" : ""}`} />
+                  Comprobar
+                </Button>
+              </div>
+
+              {respuestas[selected.id] ? (
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-emerald-800">
+                      <MessageSquareReply className="size-4" />
+                      <span className="text-sm font-semibold">El cliente ha respondido</span>
+                    </div>
+                    <p className="text-xs text-emerald-900/70">
+                      {respuestas[selected.id].from} · {fechaRespuesta(respuestas[selected.id].date)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Asunto</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {respuestas[selected.id].subject}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Mensaje</p>
+                    <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg bg-secondary/40 p-3 text-sm leading-6 text-foreground">
+                      {respuestas[selected.id].body}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-secondary/35 px-3 py-4 text-center">
+                  <p className="text-sm font-medium text-foreground">Sin respuesta todavía</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    La bandeja se comprueba automáticamente cada minuto.
+                  </p>
+                  {errorRespuestas && (
+                    <p className="mt-2 text-xs font-medium text-destructive">{errorRespuestas}</p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <DetailItem icon={Tag} label="Sector" value={selected.sector} />
