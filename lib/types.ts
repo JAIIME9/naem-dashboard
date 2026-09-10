@@ -60,6 +60,8 @@ export interface Empresa {
   primeraDeteccion: string // ISO
   ultimaActividad: string // ISO
   notas: string
+  perfilBuscado?: string
+  tipoPerfil?: TipoPerfil
 }
 
 export interface Perfil {
