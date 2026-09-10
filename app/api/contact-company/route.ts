@@ -7,10 +7,14 @@ export const dynamic = "force-dynamic"
 const SMTP_HOST = "smtp.gmail.com"
 const SMTP_PORT = 465
 const SMTP_USER = process.env.NAEM_SMTP_USER || "naemadminapp@gmail.com"
-const SMTP_PASSWORD =
-  process.env.NAEM_GMAIL_APP_PASSWORD || process.env.NAEM_SMTP_PASSWORD || ""
-const DEMO_RECIPIENT =
+const SMTP_PASSWORD = (
+  process.env.NAEM_GMAIL_APP_PASSWORD ||
+  process.env.NAEM_SMTP_PASSWORD ||
+  ""
+).replace(/\s+/g, "")
+const DEMO_RECIPIENT = (
   process.env.NAEM_DEMO_RECIPIENT || "deltadesigncontact@gmail.com"
+).toLowerCase()
 
 function clean(value: unknown) {
   return String(value ?? "")
@@ -131,6 +135,7 @@ async function sendSmtpEmail({
 
   const message = [
     `From: ${encodeHeader("NAEM ETT")} <${SMTP_USER}>`,
+    `Reply-To: ${SMTP_USER}`,
     `To: <${to}>`,
     `Subject: ${encodeHeader(subject)}`,
     "MIME-Version: 1.0",
@@ -158,6 +163,10 @@ async function sendSmtpEmail({
   }
 }
 
+function isSafeDemoAddress(email: string) {
+  return email === DEMO_RECIPIENT || email.endsWith("@example.invalid")
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json()
@@ -175,11 +184,17 @@ export async function POST(request: Request) {
 
     const demoMode = process.env.NAEM_DEMO_MODE !== "false"
     const requestedEmail = clean(payload.email).toLowerCase()
-    const to = demoMode ? DEMO_RECIPIENT : requestedEmail
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedEmail)) {
       return NextResponse.json(
         { error: "La empresa no tiene un email válido" },
+        { status: 400 },
+      )
+    }
+
+    if (demoMode && !isSafeDemoAddress(requestedEmail)) {
+      return NextResponse.json(
+        { error: "Destinatario bloqueado en modo demo" },
         { status: 400 },
       )
     }
@@ -188,14 +203,26 @@ export async function POST(request: Request) {
     const subject = `Personal para ${puesto} | NAEM ETT`
     const body = `Buenos días,\n\nMe pongo en contacto con vosotros desde NAEM ETT porque hemos visto que ${empresa} está buscando incorporar personal para el puesto de ${puesto}${ubicacion}.\n\nDesde NAEM podemos ayudaros a cubrir esta necesidad de personal de forma ágil, encargándonos del proceso de selección y facilitándoos candidatos adecuados al perfil que necesitáis.\n\nSi el proceso de selección sigue abierto, estaremos encantados de hablar con vosotros y conocer mejor las necesidades concretas del puesto.\n\nQuedamos a vuestra disposición.\n\nUn saludo,\n\nEquipo NAEM ETT\nEmpresa de Trabajo Temporal`
 
-    await sendSmtpEmail({ to, subject, body })
+    if (demoMode && requestedEmail.endsWith("@example.invalid")) {
+      return NextResponse.json({
+        ok: true,
+        sentTo: requestedEmail,
+        empresa,
+        puesto,
+        demoMode,
+        simulated: true,
+      })
+    }
+
+    await sendSmtpEmail({ to: requestedEmail, subject, body })
 
     return NextResponse.json({
       ok: true,
-      sentTo: demoMode ? DEMO_RECIPIENT : to,
+      sentTo: requestedEmail,
       empresa,
       puesto,
       demoMode,
+      simulated: false,
     })
   } catch (error) {
     console.error("Error enviando email de contacto:", error)
