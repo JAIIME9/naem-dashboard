@@ -23,6 +23,7 @@ import type {
   Perfil,
   Periodo,
   PuntoSerie,
+  TipoPerfil,
   ZonaActividad,
 } from "./types"
 
@@ -30,17 +31,61 @@ import type {
  * Capa de acceso a datos de NAEM.
  *
  * Hoy devuelve datos mock. Para conectar Airtable, sustituye el cuerpo de cada
- * función por una llamada a la API backend (p. ej. `fetch("/api/oportunidades")`)
- * manteniendo estas firmas para no tocar la interfaz.
+ * función por una llamada a la API backend manteniendo estas firmas.
  */
+
+const PERFILES_DEMO: Array<{ tipoPerfil: TipoPerfil; perfilBuscado: string }> = [
+  { tipoPerfil: "Camareros", perfilBuscado: "Camarero/a de sala" },
+  { tipoPerfil: "Agricultura", perfilBuscado: "Peón agrícola" },
+  { tipoPerfil: "Cocineros", perfilBuscado: "Cocinero/a" },
+  { tipoPerfil: "Almacén", perfilBuscado: "Mozo/a de almacén" },
+  { tipoPerfil: "Construcción", perfilBuscado: "Peón de construcción" },
+  { tipoPerfil: "Limpieza", perfilBuscado: "Personal de limpieza" },
+  { tipoPerfil: "Administrativos", perfilBuscado: "Administrativo/a" },
+  { tipoPerfil: "Dependientes", perfilBuscado: "Dependiente/a" },
+  { tipoPerfil: "Otros", perfilBuscado: "Técnico/a de mantenimiento" },
+]
+
+const SUFIJOS_DEMO = ["", "Centro", "Levante", "Mediterráneo", "Costa", "Vega"]
+
+const EMPRESAS_DEMO: Empresa[] = Array.from({ length: 84 }, (_, index) => {
+  const base = empresas[index % empresas.length]
+  const ronda = Math.floor(index / empresas.length)
+  const perfil = PERFILES_DEMO[index % PERFILES_DEMO.length]
+  const sufijo = SUFIJOS_DEMO[ronda] ?? `Grupo ${ronda + 1}`
+
+  return {
+    ...base,
+    id: `demo_emp_${String(index + 1).padStart(3, "0")}`,
+    nombre: sufijo ? `${base.nombre} ${sufijo}` : base.nombre,
+    email: "deltadesigncontact@gmail.com",
+    oportunidades: (index % 5) + 1,
+    estadoComercial:
+      index < 47 ? "Sin contactar" : index < 78 ? "En seguimiento" : "Cliente",
+    perfilBuscado: perfil.perfilBuscado,
+    tipoPerfil: perfil.tipoPerfil,
+    notas:
+      ronda === 0
+        ? base.notas
+        : `Empresa ficticia de demostración. Necesidad detectada: ${perfil.perfilBuscado}.`,
+  }
+})
 
 export async function getOportunidades(): Promise<Oportunidad[]> {
   return oportunidades
 }
 
-export async function getOportunidadesRecientes(limite = 6, periodo: Periodo = "30d"): Promise<Oportunidad[]> {
-  const factor = factorPeriodo[periodo]
-  const cantidad = Math.max(1, Math.min(limite, Math.round(limite * (periodo === "hoy" ? 0.55 : periodo === "7d" ? 0.8 : 1))))
+export async function getOportunidadesRecientes(
+  limite = 6,
+  periodo: Periodo = "30d",
+): Promise<Oportunidad[]> {
+  const cantidad = Math.max(
+    1,
+    Math.min(
+      limite,
+      Math.round(limite * (periodo === "hoy" ? 0.55 : periodo === "7d" ? 0.8 : 1)),
+    ),
+  )
   return [...oportunidades]
     .sort(
       (a, b) =>
@@ -50,7 +95,7 @@ export async function getOportunidadesRecientes(limite = 6, periodo: Periodo = "
 }
 
 export async function getEmpresas(): Promise<Empresa[]> {
-  return empresas
+  return EMPRESAS_DEMO
 }
 
 export async function getPerfiles(): Promise<Perfil[]> {
@@ -75,14 +120,22 @@ export async function getSerieOportunidades(periodo: Periodo = "30d"): Promise<P
   return serieOportunidades30d
 }
 
-export async function getDistribucionPerfiles(periodo: Periodo = "30d"): Promise<DistribucionPerfil[]> {
+export async function getDistribucionPerfiles(
+  periodo: Periodo = "30d",
+): Promise<DistribucionPerfil[]> {
   const f = factorPeriodo[periodo]
-  return distribucionPerfiles.map((item) => ({ ...item, valor: Math.max(1, Math.round(item.valor * f)) }))
+  return distribucionPerfiles.map((item) => ({
+    ...item,
+    valor: Math.max(1, Math.round(item.valor * f)),
+  }))
 }
 
 export async function getZonasActividad(periodo: Periodo = "30d"): Promise<ZonaActividad[]> {
   const f = factorPeriodo[periodo]
-  return zonasActividad.map((item) => ({ ...item, valor: Math.max(1, Math.round(item.valor * f)) }))
+  return zonasActividad.map((item) => ({
+    ...item,
+    valor: Math.max(1, Math.round(item.valor * f)),
+  }))
 }
 
 export async function getActividadGeografica(periodo: Periodo = "30d"): Promise<PuntoMapa[]> {
