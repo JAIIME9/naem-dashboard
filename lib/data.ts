@@ -47,6 +47,13 @@ const PERFILES_DEMO: Array<{ tipoPerfil: TipoPerfil; perfilBuscado: string }> = 
 ]
 
 const SUFIJOS_DEMO = ["", "Centro", "Levante", "Mediterráneo", "Costa", "Vega"]
+const EMAIL_PRUEBA_REAL = "deltadesigncontact@gmail.com"
+
+const emailSeguroDemo = (index: number) => {
+  if (index === 0) return EMAIL_PRUEBA_REAL
+  const codigo = ((index + 1) * 7919).toString(36)
+  return `naem-demo-${String(index + 1).padStart(3, "0")}-${codigo}@example.invalid`
+}
 
 const EMPRESAS_DEMO: Empresa[] = Array.from({ length: 84 }, (_, index) => {
   const base = empresas[index % empresas.length]
@@ -58,7 +65,7 @@ const EMPRESAS_DEMO: Empresa[] = Array.from({ length: 84 }, (_, index) => {
     ...base,
     id: `demo_emp_${String(index + 1).padStart(3, "0")}`,
     nombre: sufijo ? `${base.nombre} ${sufijo}` : base.nombre,
-    email: "deltadesigncontact@gmail.com",
+    email: emailSeguroDemo(index),
     oportunidades: (index % 5) + 1,
     estadoComercial:
       index < 47 ? "Sin contactar" : index < 78 ? "En seguimiento" : "Cliente",
