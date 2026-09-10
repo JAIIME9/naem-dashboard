@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -82,13 +81,11 @@ export function AppSidebar() {
           <span className="block text-[9px] font-medium uppercase tracking-[0.14em] text-muted-foreground/55">
             Desarrollado por
           </span>
-          <div className="mt-2 inline-flex rounded-md border border-sidebar-border/70 bg-white/70 px-2 py-1.5">
-            <Image
+          <div className="mt-2 flex h-[42px] w-[132px] items-center justify-center overflow-hidden rounded-md border border-sidebar-border/70 bg-[#f8f4e9]">
+            <img
               src="/enehixpro-logo.png"
               alt="Enehixpro"
-              width={104}
-              height={36}
-              className="h-auto w-[92px] object-contain opacity-80"
+              className="h-full w-full scale-[1.42] object-cover object-center"
             />
           </div>
         </div>
