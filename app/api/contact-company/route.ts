@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server"
-import tls from "node:tls"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+export const maxDuration = 60
 
-const SMTP_HOST = "smtp.gmail.com"
-const SMTP_PORT = 465
-const SMTP_USER = process.env.NAEM_SMTP_USER || "naemadminapp@gmail.com"
-const SMTP_PASSWORD = (
-  process.env.NAEM_GMAIL_APP_PASSWORD ||
-  process.env.NAEM_SMTP_PASSWORD ||
-  ""
-).replace(/\s+/g, "")
-const DEMO_RECIPIENT = (
-  process.env.NAEM_DEMO_RECIPIENT || "deltadesigncontact@gmail.com"
-).toLowerCase()
+const CONTACT_WEBHOOK =
+  process.env.NAEM_N8N_CONTACT_WEBHOOK ||
+  "https://naemadmin.app.n8n.cloud/webhook/naem-contact-company-9f4d7c2a6e13b85f"
+
+const CONTACT_SECRET =
+  process.env.NAEM_N8N_CONTACT_SECRET ||
+  "naem-contact-7e6f2b8c9a1d4f35b0c7e2a9"
 
 function clean(value: unknown) {
   return String(value ?? "")
@@ -22,158 +18,16 @@ function clean(value: unknown) {
     .trim()
 }
 
-function encodeHeader(value: string) {
-  return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`
-}
-
-function readResponse(socket: tls.TLSSocket) {
-  return new Promise<{ code: number; text: string }>((resolve, reject) => {
-    let buffer = ""
-
-    const cleanup = () => {
-      socket.off("data", onData)
-      socket.off("error", onError)
-      socket.off("timeout", onTimeout)
-    }
-
-    const onError = (error: Error) => {
-      cleanup()
-      reject(error)
-    }
-
-    const onTimeout = () => {
-      cleanup()
-      reject(new Error("Tiempo de espera SMTP agotado"))
-    }
-
-    const onData = (chunk: Buffer) => {
-      buffer += chunk.toString("utf8")
-      const lines = buffer.split(/\r?\n/)
-
-      for (let i = lines.length - 1; i >= 0; i -= 1) {
-        const line = lines[i]
-        if (/^\d{3} /.test(line)) {
-          cleanup()
-          resolve({ code: Number(line.slice(0, 3)), text: buffer.trim() })
-          return
-        }
-      }
-    }
-
-    socket.on("data", onData)
-    socket.once("error", onError)
-    socket.once("timeout", onTimeout)
-  })
-}
-
-async function command(
-  socket: tls.TLSSocket,
-  value: string,
-  expected: number[],
-) {
-  const responsePromise = readResponse(socket)
-  socket.write(`${value}\r\n`)
-  const response = await responsePromise
-
-  if (!expected.includes(response.code)) {
-    throw new Error(`SMTP ${response.code}: ${response.text}`)
-  }
-
-  return response
-}
-
-async function sendSmtpEmail({
-  to,
-  subject,
-  body,
-}: {
-  to: string
-  subject: string
-  body: string
-}) {
-  if (!SMTP_PASSWORD) {
-    throw new Error(
-      "Falta configurar NAEM_GMAIL_APP_PASSWORD en las variables de entorno de Vercel",
-    )
-  }
-
-  const socket = tls.connect({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    servername: SMTP_HOST,
-    rejectUnauthorized: true,
-  })
-
-  socket.setTimeout(15_000)
-
-  await new Promise<void>((resolve, reject) => {
-    const onError = (error: Error) => {
-      socket.off("secureConnect", onConnect)
-      reject(error)
-    }
-    const onConnect = () => {
-      socket.off("error", onError)
-      resolve()
-    }
-    socket.once("error", onError)
-    socket.once("secureConnect", onConnect)
-  })
-
-  const greeting = await readResponse(socket)
-  if (greeting.code !== 220) {
-    socket.destroy()
-    throw new Error(`SMTP ${greeting.code}: ${greeting.text}`)
-  }
-
-  await command(socket, "EHLO naem-empleo.vercel.app", [250])
-  await command(socket, "AUTH LOGIN", [334])
-  await command(socket, Buffer.from(SMTP_USER).toString("base64"), [334])
-  await command(socket, Buffer.from(SMTP_PASSWORD).toString("base64"), [235])
-  await command(socket, `MAIL FROM:<${SMTP_USER}>`, [250])
-  await command(socket, `RCPT TO:<${to}>`, [250, 251])
-  await command(socket, "DATA", [354])
-
-  const message = [
-    `From: ${encodeHeader("NAEM ETT")} <${SMTP_USER}>`,
-    `Reply-To: ${SMTP_USER}`,
-    `To: <${to}>`,
-    `Subject: ${encodeHeader(subject)}`,
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: 8bit",
-    "",
-    body,
-  ]
-    .join("\r\n")
-    .replace(/^\./gm, "..")
-
-  const dataResponse = readResponse(socket)
-  socket.write(`${message}\r\n.\r\n`)
-  const finalResponse = await dataResponse
-
-  if (finalResponse.code !== 250) {
-    socket.destroy()
-    throw new Error(`SMTP ${finalResponse.code}: ${finalResponse.text}`)
-  }
-
-  try {
-    await command(socket, "QUIT", [221])
-  } finally {
-    socket.end()
-  }
-}
-
-function isSafeDemoAddress(email: string) {
-  return email === DEMO_RECIPIENT || email.endsWith("@example.invalid")
-}
-
 export async function POST(request: Request) {
   try {
-    const payload = await request.json()
+    const payload = await request.json().catch(() => ({}))
 
     const empresa = clean(payload.empresa)
     const puesto = clean(payload.puesto) || "personal"
     const municipio = clean(payload.municipio)
+    const provincia = clean(payload.provincia)
+    const email = clean(payload.email).toLowerCase()
+    const opportunityKey = clean(payload.opportunity_key || payload.opportunityKey)
 
     if (!empresa) {
       return NextResponse.json(
@@ -182,56 +36,65 @@ export async function POST(request: Request) {
       )
     }
 
-    const demoMode = process.env.NAEM_DEMO_MODE !== "false"
-    const requestedEmail = clean(payload.email).toLowerCase()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 55_000)
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedEmail)) {
-      return NextResponse.json(
-        { error: "La empresa no tiene un email válido" },
-        { status: 400 },
-      )
-    }
-
-    if (demoMode && !isSafeDemoAddress(requestedEmail)) {
-      return NextResponse.json(
-        { error: "Destinatario bloqueado en modo demo" },
-        { status: 400 },
-      )
-    }
-
-    const ubicacion = municipio ? ` en ${municipio}` : ""
-    const subject = `Personal para ${puesto} | NAEM ETT`
-    const body = `Buenos días,\n\nMe pongo en contacto con vosotros desde NAEM ETT porque hemos visto que ${empresa} está buscando incorporar personal para el puesto de ${puesto}${ubicacion}.\n\nDesde NAEM podemos ayudaros a cubrir esta necesidad de personal de forma ágil, encargándonos del proceso de selección y facilitándoos candidatos adecuados al perfil que necesitáis.\n\nSi el proceso de selección sigue abierto, estaremos encantados de hablar con vosotros y conocer mejor las necesidades concretas del puesto.\n\nQuedamos a vuestra disposición.\n\nUn saludo,\n\nEquipo NAEM ETT\nEmpresa de Trabajo Temporal`
-
-    if (demoMode && requestedEmail.endsWith("@example.invalid")) {
-      return NextResponse.json({
-        ok: true,
-        sentTo: requestedEmail,
-        empresa,
-        puesto,
-        demoMode,
-        simulated: true,
+    let response: Response
+    try {
+      response = await fetch(CONTACT_WEBHOOK, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-naem-secret": CONTACT_SECRET,
+        },
+        cache: "no-store",
+        signal: controller.signal,
+        body: JSON.stringify({
+          empresa,
+          puesto,
+          municipio,
+          provincia,
+          email,
+          opportunity_key: opportunityKey,
+        }),
       })
+    } finally {
+      clearTimeout(timeout)
     }
 
-    await sendSmtpEmail({ to: requestedEmail, subject, body })
+    const result = await response.json().catch(() => ({}))
+
+    if (!response.ok || result?.ok !== true) {
+      return NextResponse.json(
+        {
+          error:
+            result?.error ||
+            "No se pudo localizar un email real y enviar el contacto",
+        },
+        { status: 422 },
+      )
+    }
 
     return NextResponse.json({
       ok: true,
-      sentTo: requestedEmail,
-      empresa,
-      puesto,
-      demoMode,
+      sentTo: result.sentTo,
+      empresa: result.empresa || empresa,
+      puesto: result.puesto || puesto,
+      municipio: result.municipio || municipio,
+      emailVerificado: result.emailVerificado === true,
       simulated: false,
+      fechaEnvio: result.fechaEnvio || null,
     })
   } catch (error) {
-    console.error("Error enviando email de contacto:", error)
+    console.error("Error enviando contacto mediante n8n:", error)
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "No se pudo enviar el email de contacto",
+          error instanceof Error && error.name === "AbortError"
+            ? "La búsqueda del email tardó demasiado. Inténtalo de nuevo."
+            : error instanceof Error
+              ? error.message
+              : "No se pudo enviar el email de contacto",
       },
       { status: 500 },
     )
