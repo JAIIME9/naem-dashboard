@@ -3,6 +3,7 @@ import tls from "node:tls"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+export const maxDuration = 60
 
 const IMAP_HOST = "imap.gmail.com"
 const IMAP_PORT = 993
@@ -12,9 +13,19 @@ const IMAP_PASSWORD = (
   process.env.NAEM_SMTP_PASSWORD ||
   ""
 ).replace(/\s+/g, "")
-const DEMO_RECIPIENT = (
-  process.env.NAEM_DEMO_RECIPIENT || "deltadesigncontact@gmail.com"
-).toLowerCase()
+
+const CONTACT_MAP_WEBHOOK =
+  process.env.NAEM_N8N_CONTACT_MAP_WEBHOOK ||
+  "https://naemadmin.app.n8n.cloud/webhook/naem-contact-map-2d8c7a4f1e69b305"
+
+const CONTACT_SECRET =
+  process.env.NAEM_N8N_CONTACT_SECRET ||
+  "naem-contact-7e6f2b8c9a1d4f35b0c7e2a9"
+
+const BLOCKED_FALLBACKS = new Set([
+  "deltadesigncontact@gmail.com",
+  "naemadminapp@gmail.com",
+])
 
 interface CompanyInput {
   id: string
@@ -37,6 +48,40 @@ function clean(value: unknown) {
 
 function escapeImap(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+}
+
+async function resolveContactEmails(aliases: string[]) {
+  if (aliases.length === 0) return {} as Record<string, string>
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12_000)
+
+    let response: Response
+    try {
+      response = await fetch(CONTACT_MAP_WEBHOOK, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-naem-secret": CONTACT_SECRET,
+        },
+        cache: "no-store",
+        signal: controller.signal,
+        body: JSON.stringify({ aliases }),
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || result?.ok !== true || typeof result?.map !== "object") {
+      return {}
+    }
+
+    return result.map as Record<string, string>
+  } catch {
+    return {}
+  }
 }
 
 function waitForGreeting(socket: tls.TLSSocket) {
@@ -373,17 +418,33 @@ export async function POST(request: Request) {
       ? (payload.companies as CompanyInput[])
       : []
 
-    const demoMode = process.env.NAEM_DEMO_MODE !== "false"
-    const allowed = companies
+    const normalized = companies
       .map((company) => ({
         id: clean(company?.id),
-        email: clean(company?.email).toLowerCase(),
+        alias: clean(company?.email).toLowerCase(),
       }))
-      .filter((company) => company.id && company.email)
-      .filter((company) =>
-        demoMode ? company.email === DEMO_RECIPIENT : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(company.email),
-      )
-      .slice(0, demoMode ? 1 : 20)
+      .filter((company) => company.id && company.alias)
+
+    const aliases = [...new Set(normalized.map((company) => company.alias))]
+    const resolved = await resolveContactEmails(aliases)
+
+    const allowed = normalized
+      .map((company) => {
+        const mapped = clean(resolved[company.alias]).toLowerCase()
+        const fallback =
+          !company.alias.endsWith("@example.invalid") &&
+          !BLOCKED_FALLBACKS.has(company.alias) &&
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(company.alias)
+            ? company.alias
+            : ""
+
+        return {
+          id: company.id,
+          email: mapped || fallback,
+        }
+      })
+      .filter((company) => company.email)
+      .slice(0, 20)
 
     if (allowed.length === 0) {
       return NextResponse.json({ ok: true, replies: {}, checked: 0 })
@@ -410,7 +471,7 @@ export async function POST(request: Request) {
       ok: true,
       replies,
       checked: allowed.length,
-      demoMode,
+      demoMode: false,
     })
   } catch (error) {
     socket?.destroy()
