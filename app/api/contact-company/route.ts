@@ -8,10 +8,6 @@ const CONTACT_WEBHOOK =
   process.env.NAEM_N8N_CONTACT_WEBHOOK ||
   "https://naemadmin.app.n8n.cloud/webhook/naem-contact-company-9f4d7c2a6e13b85f"
 
-const CONTACT_SECRET =
-  process.env.NAEM_N8N_CONTACT_SECRET ||
-  "naem-contact-7e6f2b8c9a1d4f35b0c7e2a9"
-
 function clean(value: unknown) {
   return String(value ?? "")
     .replace(/[\r\n]+/g, " ")
@@ -19,6 +15,16 @@ function clean(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const contactSecret = process.env.NAEM_N8N_CONTACT_SECRET
+
+  if (!contactSecret) {
+    console.error("Falta NAEM_N8N_CONTACT_SECRET en el entorno de producción.")
+    return NextResponse.json(
+      { error: "El contacto con n8n no está configurado en el servidor." },
+      { status: 503 },
+    )
+  }
+
   try {
     const payload = await request.json().catch(() => ({}))
 
@@ -27,7 +33,9 @@ export async function POST(request: Request) {
     const municipio = clean(payload.municipio)
     const provincia = clean(payload.provincia)
     const email = clean(payload.email).toLowerCase()
-    const opportunityKey = clean(payload.opportunity_key || payload.opportunityKey)
+    const opportunityKey = clean(
+      payload.opportunity_key || payload.opportunityKey,
+    )
 
     if (!empresa) {
       return NextResponse.json(
@@ -40,12 +48,13 @@ export async function POST(request: Request) {
     const timeout = setTimeout(() => controller.abort(), 55_000)
 
     let response: Response
+
     try {
       response = await fetch(CONTACT_WEBHOOK, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-naem-secret": CONTACT_SECRET,
+          "x-naem-secret": contactSecret,
         },
         cache: "no-store",
         signal: controller.signal,
@@ -87,6 +96,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("Error enviando contacto mediante n8n:", error)
+
     return NextResponse.json(
       {
         error:
