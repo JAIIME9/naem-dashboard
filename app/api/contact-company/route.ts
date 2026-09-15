@@ -4,13 +4,8 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-const CONTACT_WEBHOOK =
-  process.env.NAEM_N8N_CONTACT_WEBHOOK ||
-  "https://naemadmin.app.n8n.cloud/webhook/naem-contact-company-9f4d7c2a6e13b85f"
-
-const CONTACT_SECRET =
-  process.env.NAEM_N8N_CONTACT_SECRET ||
-  "naem-contact-7e6f2b8c9a1d4f35b0c7e2a9"
+const CONTACT_WEBHOOK = process.env.NAEM_N8N_CONTACT_WEBHOOK || ""
+const CONTACT_SECRET = process.env.NAEM_WEBHOOK_SECRET || ""
 
 function clean(value: unknown) {
   return String(value ?? "")
@@ -20,6 +15,13 @@ function clean(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    if (!CONTACT_WEBHOOK || !CONTACT_SECRET) {
+      return NextResponse.json(
+        { error: "La conexión con n8n aún no está configurada en producción" },
+        { status: 503 },
+      )
+    }
+
     const payload = await request.json().catch(() => ({}))
 
     const empresa = clean(payload.empresa)
