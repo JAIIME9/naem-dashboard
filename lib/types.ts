@@ -1,5 +1,4 @@
-// Dominio de NAEM. Estas entidades reflejan las tablas previstas en Airtable,
-// de forma que la capa de datos (lib/data.ts) pueda sustituirse sin tocar la UI.
+// Dominio de NAEM.
 
 export type EstadoOportunidad =
   | "Nueva"
@@ -29,6 +28,7 @@ export type TipoPerfil =
 
 export interface Oportunidad {
   id: string
+  opportunityKey?: string
   titulo: string
   empresa: string
   perfil: string
