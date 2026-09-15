@@ -11,7 +11,7 @@ import {
   getOportunidadesRecientes,
   getSerieOportunidades,
   getZonasActividad,
-} from "@/lib/data"
+} from "@/lib/live-data"
 import type { Periodo } from "@/lib/types"
 
 function normalizePeriodo(value: string | string[] | undefined): Periodo {
