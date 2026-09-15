@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header"
 import { PerfilesPanel } from "@/components/perfiles/perfiles-panel"
-import { getEmpresas, getOportunidades, getOtrosPerfiles, getPerfiles } from "@/lib/data"
+import { getEmpresas, getOportunidades, getOtrosPerfiles, getPerfiles } from "@/lib/live-data"
 
 export default async function PerfilesPage() {
   const [perfiles, otrosPerfiles, oportunidades, empresas] = await Promise.all([
