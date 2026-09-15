@@ -69,6 +69,11 @@ function normalize(value: unknown) {
     .replace(/[\u0300-\u036f]/g, "")
 }
 
+function contactoEnviado(value: unknown) {
+  const v = normalize(value)
+  return v === "contactado" || v === "contactada" || v === "enviado"
+}
+
 function tipoPerfil(value: unknown): TipoPerfil {
   const v = normalize(value)
   if (v.includes("limpieza")) return "Limpieza"
@@ -83,7 +88,7 @@ function tipoPerfil(value: unknown): TipoPerfil {
 }
 
 function estadoOportunidad(raw: RawOpportunity): EstadoOportunidad {
-  if (normalize(raw.contactoEstado).includes("contact")) return "Contactada"
+  if (contactoEnviado(raw.contactoEstado)) return "Contactada"
   const v = normalize(raw.estado)
   if (v === "revisada") return "Revisada"
   if (v === "contactada") return "Contactada"
@@ -104,7 +109,7 @@ function oportunidadFecha(raw: RawOpportunity) {
 }
 
 function prioridad(raw: RawOpportunity): "Alta" | "Media" | "Baja" {
-  if (normalize(raw.contactoEstado).includes("contact")) return "Baja"
+  if (contactoEnviado(raw.contactoEstado)) return "Baja"
   const t = new Date(oportunidadFecha(raw)).getTime()
   if (!Number.isFinite(t)) return "Media"
   const horas = (Date.now() - t) / 3_600_000
@@ -233,7 +238,7 @@ export async function getEmpresas(): Promise<Empresa[]> {
       )
       const first = ordenadas[0]
       const last = ordenadas.at(-1) || first
-      const contactada = grupo.some((x) => normalize(x.contactoEstado).includes("contact"))
+      const contactada = grupo.some((x) => contactoEnviado(x.contactoEstado))
       const descartada = grupo.every((x) => normalize(x.estado) === "descartada")
       const estadoComercial: EstadoComercial = descartada
         ? "Descartada"
