@@ -119,10 +119,12 @@ async function getDashboard(): Promise<DashboardPayload> {
 
   try {
     const response = await fetch(DASHBOARD_WEBHOOK, {
-      method: "GET",
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "x-naem-secret": DASHBOARD_SECRET,
       },
+      body: JSON.stringify({}),
       cache: "no-store",
     })
 
