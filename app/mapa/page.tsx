@@ -1,6 +1,6 @@
 import { MapaPanel } from "@/components/mapa/mapa-panel"
 import { PageHeader } from "@/components/page-header"
-import { getActividadGeografica, getOportunidades } from "@/lib/data"
+import { getActividadGeografica, getOportunidades } from "@/lib/live-data"
 import type { Periodo } from "@/lib/types"
 
 function normalizePeriodo(value: string | string[] | undefined): Periodo {
