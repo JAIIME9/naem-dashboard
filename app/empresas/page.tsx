@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { EmpresasGrid } from "@/components/empresas/empresas-grid"
 import { PageHeader } from "@/components/page-header"
-import { getEmpresas, getOportunidades } from "@/lib/data"
+import { getEmpresas, getOportunidades } from "@/lib/live-data"
 
 export default async function EmpresasPage() {
   const [empresas, oportunidades] = await Promise.all([
