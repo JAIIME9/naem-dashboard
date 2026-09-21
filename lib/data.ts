@@ -69,6 +69,24 @@ function normalize(value: unknown) {
     .replace(/[\u0300-\u036f]/g, "")
 }
 
+function empresaIdentificada(value: unknown) {
+  const v = normalize(value)
+  if (!v) return false
+
+  return !(
+    v.startsWith("empresa por identificar") ||
+    v.startsWith("empresa no identificada") ||
+    v.startsWith("empresa desconocida") ||
+    v === "por identificar" ||
+    v === "sin identificar" ||
+    v === "desconocida" ||
+    v === "desconocido" ||
+    v === "unknown" ||
+    v === "n/a" ||
+    v === "na"
+  )
+}
+
 function contactoEnviado(value: unknown) {
   const v = normalize(value)
   return v === "contactado" || v === "contactada" || v === "enviado"
@@ -144,10 +162,14 @@ async function getDashboard(): Promise<DashboardPayload> {
       return { ok: false, oportunidades: [], perfiles: [] }
     }
 
+    const oportunidades = Array.isArray(data.oportunidades)
+      ? data.oportunidades.filter((raw) => empresaIdentificada(raw.empresa))
+      : []
+
     return {
       ok: true,
       generatedAt: data.generatedAt,
-      oportunidades: Array.isArray(data.oportunidades) ? data.oportunidades : [],
+      oportunidades,
       perfiles: Array.isArray(data.perfiles) ? data.perfiles : [],
     }
   } catch (error) {
