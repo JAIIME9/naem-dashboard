@@ -52,6 +52,9 @@ export interface Empresa {
   web: string
   telefono: string
   email: string
+  emailVerificado?: boolean
+  contactoFuente?: string
+  opportunityKey?: string
   municipio: string
   provincia: string
   sector: string
