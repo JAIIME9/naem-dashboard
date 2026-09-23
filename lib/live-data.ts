@@ -1,19 +1,7 @@
+import { cache } from "react"
+import { unstable_cache } from "next/cache"
+
 import { municipioCoords, type PuntoMapa } from "./geo"
-import {
-  etiquetaPeriodoTexto as etiquetaPeriodoTextoDemo,
-  getActividadGeografica as getActividadGeograficaDemo,
-  getDistribucionPerfiles as getDistribucionPerfilesDemo,
-  getEmpresas as getEmpresasDemo,
-  getKpis as getKpisDemo,
-  getMunicipios as getMunicipiosDemo,
-  getNotificaciones as getNotificacionesDemo,
-  getOportunidades as getOportunidadesDemo,
-  getOportunidadesRecientes as getOportunidadesRecientesDemo,
-  getOtrosPerfiles as getOtrosPerfilesDemo,
-  getPerfiles as getPerfilesDemo,
-  getSerieOportunidades as getSerieOportunidadesDemo,
-  getZonasActividad as getZonasActividadDemo,
-} from "./data"
 import type {
   DistribucionPerfil,
   Empresa,
@@ -36,6 +24,7 @@ type RawOpportunity = Record<string, unknown>
 type RawProfile = Record<string, unknown>
 type DashboardPayload = {
   ok?: boolean
+  generatedAt?: string
   oportunidades?: RawOpportunity[]
   perfiles?: RawProfile[]
 }
@@ -47,29 +36,132 @@ function clean(value: unknown) {
   return String(value ?? "").replace(/\s+/g, " ").trim()
 }
 
+function normalize(value: unknown) {
+  return clean(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+}
+
 function asDate(value: unknown) {
   const d = new Date(clean(value))
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-function normalizeTipoPerfil(value: unknown): TipoPerfil {
-  const s = clean(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+function boolValue(value: unknown) {
+  if (value === true || value === 1) return true
+  const v = normalize(value)
+  return v === "true" || v === "1" || v === "si" || v === "yes" || v === "verificado" || v === "verified"
+}
 
+function empresaIdentificada(value: unknown) {
+  const v = normalize(value)
+  if (!v) return false
+  return !(
+    v.startsWith("empresa por identificar") ||
+    v.startsWith("empresa no identificada") ||
+    v.startsWith("empresa desconocida") ||
+    v === "por identificar" ||
+    v === "sin identificar" ||
+    v === "desconocida" ||
+    v === "desconocido" ||
+    v === "unknown" ||
+    v === "n/a" ||
+    v === "na"
+  )
+}
+
+function rawEmpresa(raw: RawOpportunity) {
+  return clean(raw.empresa || raw.empresaNombre || raw["Empresa nombre"])
+}
+
+function rawEmail(raw: RawOpportunity) {
+  return clean(
+    raw.emailContacto ||
+      raw.email_contacto ||
+      raw.email ||
+      raw["Email contacto"] ||
+      raw["Email"],
+  ).toLowerCase()
+}
+
+function rawTelefono(raw: RawOpportunity) {
+  return clean(
+    raw.telefonoContacto ||
+      raw.telefono_contacto ||
+      raw.telefono ||
+      raw["Teléfono contacto"] ||
+      raw["Telefono contacto"],
+  )
+}
+
+function rawWeb(raw: RawOpportunity) {
+  return clean(raw.empresaWeb || raw.empresa_web || raw.web || raw["Empresa web"])
+}
+
+function rawFuenteContacto(raw: RawOpportunity) {
+  return clean(
+    raw.fuenteEmail ||
+      raw.fuente_email ||
+      raw.contactoFuente ||
+      raw.contacto_fuente ||
+      raw["Fuente email"],
+  )
+}
+
+function emailValido(value: unknown) {
+  const email = clean(value).toLowerCase()
+  if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) return false
+  const dominio = email.split("@")[1] || ""
+  return ![
+    "example.com",
+    "example.org",
+    "example.net",
+    "test.invalid",
+    "invalid",
+  ].includes(dominio)
+}
+
+function emailVerificado(raw: RawOpportunity) {
+  const explicit =
+    raw.emailVerificado ??
+    raw.email_verificado ??
+    raw["Email verificado"] ??
+    raw.contactoVerificado ??
+    raw.contacto_verificado
+
+  // Los registros antiguos no tenían esta columna. Si ya existe un email real
+  // guardado, se considera utilizable; los nuevos registros sí pueden marcar
+  // explícitamente false y entonces quedan fuera.
+  if (explicit === undefined || explicit === null || clean(explicit) === "") {
+    return emailValido(rawEmail(raw))
+  }
+  return boolValue(explicit) && emailValido(rawEmail(raw))
+}
+
+function rawContactable(raw: RawOpportunity) {
+  return empresaIdentificada(rawEmpresa(raw)) && emailVerificado(raw)
+}
+
+function normalizeTipoPerfil(value: unknown): TipoPerfil {
+  const s = normalize(value)
   if (s.includes("limpieza")) return "Limpieza"
   if (s.includes("camarer")) return "Camareros"
   if (s.includes("cocin")) return "Cocineros"
   if (s.includes("administr")) return "Administrativos"
-  if (s.includes("almacen") || s.includes("mozo")) return "Almacén"
-  if (s.includes("depend")) return "Dependientes"
-  if (s.includes("agric")) return "Agricultura"
-  if (s.includes("constru")) return "Construcción"
+  if (s.includes("almacen") || s.includes("mozo") || s.includes("logistic")) return "Almacén"
+  if (s.includes("depend") || s.includes("tienda")) return "Dependientes"
+  if (s.includes("agric") || s.includes("campo") || s.includes("peon agric")) return "Agricultura"
+  if (s.includes("constru") || s.includes("obra")) return "Construcción"
   return "Otros"
 }
 
 function normalizeEstado(raw: RawOpportunity): EstadoOportunidad {
+  const contacto = normalize(raw.contactoEstado || raw.contacto_estado || raw["Contacto estado"])
+  if (contacto === "contactado" || contacto === "contactada" || contacto === "enviado") {
+    return "Contactada"
+  }
+
   const estado = clean(raw.estado || raw.Estado)
   const permitidos: EstadoOportunidad[] = [
     "Nueva",
@@ -78,11 +170,9 @@ function normalizeEstado(raw: RawOpportunity): EstadoOportunidad {
     "Interesante",
     "Descartada",
   ]
-  if (permitidos.includes(estado as EstadoOportunidad)) {
-    return estado as EstadoOportunidad
-  }
-  const contacto = clean(raw.contactoEstado || raw["Contacto estado"])
-  return /contactad/i.test(contacto) ? "Contactada" : "Nueva"
+  return permitidos.includes(estado as EstadoOportunidad)
+    ? (estado as EstadoOportunidad)
+    : "Nueva"
 }
 
 function normalizePrioridad(value: unknown): Prioridad {
@@ -90,35 +180,61 @@ function normalizePrioridad(value: unknown): Prioridad {
   return s === "Alta" || s === "Baja" ? s : "Media"
 }
 
-async function loadDashboard(): Promise<DashboardPayload | null> {
-  if (!DASHBOARD_WEBHOOK || !WEBHOOK_SECRET) return null
+const fetchDashboardCached = unstable_cache(
+  async (): Promise<DashboardPayload | null> => {
+    if (!DASHBOARD_WEBHOOK || !WEBHOOK_SECRET) return null
 
-  try {
-    const response = await fetch(DASHBOARD_WEBHOOK, {
-      method: "GET",
-      headers: {
-        "x-naem-secret": WEBHOOK_SECRET,
-      },
-      cache: "no-store",
-    })
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8_000)
+      let response: Response
 
-    if (!response.ok) return null
-    const data = (await response.json().catch(() => null)) as DashboardPayload | null
-    if (!data || data.ok !== true || !Array.isArray(data.oportunidades)) return null
-    return data
-  } catch {
-    return null
-  }
-}
+      try {
+        response = await fetch(DASHBOARD_WEBHOOK, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-naem-secret": WEBHOOK_SECRET,
+          },
+          body: JSON.stringify({}),
+          cache: "no-store",
+          signal: controller.signal,
+        })
+      } finally {
+        clearTimeout(timeout)
+      }
+
+      if (!response.ok) return null
+      const data = (await response.json().catch(() => null)) as DashboardPayload | null
+      if (!data || data.ok !== true || !Array.isArray(data.oportunidades)) return null
+
+      return {
+        ...data,
+        // La app solo trabaja con empresas identificadas y con email utilizable.
+        oportunidades: data.oportunidades.filter(rawContactable),
+        perfiles: Array.isArray(data.perfiles) ? data.perfiles : [],
+      }
+    } catch {
+      return null
+    }
+  },
+  ["naem-dashboard-contactable-v1"],
+  { revalidate: 8 },
+)
+
+// Deduplica todas las llamadas de una misma navegación. Antes cada widget del
+// resumen disparaba su propio webhook de n8n, provocando varias ejecuciones por clic.
+const loadDashboard = cache(fetchDashboardCached)
 
 function toOportunidad(raw: RawOpportunity, index: number): Oportunidad {
   const perfilDetectado = clean(raw.perfilDetectado || raw["Perfil detectado"] || raw.perfil)
   const tipoRaw = clean(raw.tipoPerfil || raw["Tipo de perfil"] || perfilDetectado)
   const titulo = clean(raw.titulo || raw.oportunidad || raw.Oportunidad) || "Oportunidad detectada"
-  const empresa = clean(raw.empresa || raw.empresaNombre || raw["Empresa nombre"]) || "Empresa por identificar"
+  const empresa = rawEmpresa(raw)
 
   return {
-    id: clean(raw.id) || clean(raw.opportunityKey || raw["Opportunity Key"]) || `opp_${index + 1}`,
+    id: clean(raw.id) || clean(raw.opportunityKey || raw.opportunity_key || raw["Opportunity Key"]) || `opp_${index + 1}`,
+    opportunityKey: clean(raw.opportunityKey || raw.opportunity_key || raw["Opportunity Key"]),
     titulo,
     empresa,
     perfil: clean(raw.perfil) || perfilDetectado || tipoRaw || "Otros",
@@ -137,9 +253,9 @@ function toOportunidad(raw: RawOpportunity, index: number): Oportunidad {
   }
 }
 
-async function liveOportunidades(): Promise<Oportunidad[] | null> {
+async function liveOportunidades(): Promise<Oportunidad[]> {
   const data = await loadDashboard()
-  if (!data) return null
+  if (!data) return []
   return (data.oportunidades || []).map(toOportunidad)
 }
 
@@ -153,7 +269,7 @@ function filterPeriodo(items: Oportunidad[], periodo: Periodo) {
 }
 
 export async function getOportunidades(): Promise<Oportunidad[]> {
-  return (await liveOportunidades()) ?? getOportunidadesDemo()
+  return liveOportunidades()
 }
 
 export async function getOportunidadesRecientes(
@@ -161,8 +277,6 @@ export async function getOportunidadesRecientes(
   periodo: Periodo = "30d",
 ): Promise<Oportunidad[]> {
   const live = await liveOportunidades()
-  if (!live) return getOportunidadesRecientesDemo(limite, periodo)
-
   return filterPeriodo(live, periodo)
     .sort((a, b) => (asDate(b.fechaDeteccion)?.getTime() ?? 0) - (asDate(a.fechaDeteccion)?.getTime() ?? 0))
     .slice(0, Math.max(1, limite))
@@ -170,44 +284,58 @@ export async function getOportunidadesRecientes(
 
 export async function getEmpresas(): Promise<Empresa[]> {
   const data = await loadDashboard()
-  if (!data) return getEmpresasDemo()
+  if (!data) return []
 
-  const map = new Map<string, {
-    nombre: string
-    web: string
-    email: string
-    municipio: string
-    provincia: string
-    tipoPerfil: TipoPerfil
-    perfilBuscado: string
-    oportunidades: number
-    contactada: boolean
-    primera: string
-    ultima: string
-    descripcion: string
-  }>()
+  const map = new Map<
+    string,
+    {
+      nombre: string
+      web: string
+      email: string
+      emailVerificado: boolean
+      telefono: string
+      contactoFuente: string
+      opportunityKey: string
+      municipio: string
+      provincia: string
+      tipoPerfil: TipoPerfil
+      perfilBuscado: string
+      oportunidades: number
+      contactada: boolean
+      primera: string
+      ultima: string
+      descripcion: string
+    }
+  >()
 
   for (const raw of data.oportunidades || []) {
-    const nombre = clean(raw.empresa || raw.empresaNombre || raw["Empresa nombre"])
-    if (!nombre) continue
+    if (!rawContactable(raw)) continue
+    const nombre = rawEmpresa(raw)
+    const key = normalize(nombre)
+    if (!key) continue
 
     const fecha = clean(raw.fechaDeteccion || raw["Fecha detección"])
-    const actual = map.get(nombre)
+    const actual = map.get(key)
     const perfil = clean(raw.perfilDetectado || raw["Perfil detectado"] || raw.perfil)
     const tipo = normalizeTipoPerfil(raw.tipoPerfil || raw["Tipo de perfil"] || perfil)
-    const contacto = clean(raw.contactoEstado || raw["Contacto estado"])
+    const contacto = normalize(raw.contactoEstado || raw.contacto_estado || raw["Contacto estado"])
+    const oppKey = clean(raw.opportunityKey || raw.opportunity_key || raw["Opportunity Key"])
 
     if (!actual) {
-      map.set(nombre, {
+      map.set(key, {
         nombre,
-        web: clean(raw.empresaWeb || raw["Empresa web"]),
-        email: clean(raw.emailContacto || raw["Email contacto"]),
+        web: rawWeb(raw),
+        email: rawEmail(raw),
+        emailVerificado: emailVerificado(raw),
+        telefono: rawTelefono(raw),
+        contactoFuente: rawFuenteContacto(raw),
+        opportunityKey: oppKey,
         municipio: clean(raw.municipio || raw.Municipio),
         provincia: clean(raw.provincia || raw.Provincia),
         tipoPerfil: tipo,
         perfilBuscado: perfil || tipo,
         oportunidades: 1,
-        contactada: /contactad|enviado/i.test(contacto),
+        contactada: contacto === "contactado" || contacto === "contactada" || contacto === "enviado",
         primera: fecha,
         ultima: fecha,
         descripcion: clean(raw.descripcion || raw.Descripción),
@@ -216,48 +344,79 @@ export async function getEmpresas(): Promise<Empresa[]> {
     }
 
     actual.oportunidades += 1
-    actual.contactada ||= /contactad|enviado/i.test(contacto)
-    if (!actual.email) actual.email = clean(raw.emailContacto || raw["Email contacto"])
-    if (!actual.web) actual.web = clean(raw.empresaWeb || raw["Empresa web"])
+    actual.contactada ||= contacto === "contactado" || contacto === "contactada" || contacto === "enviado"
+    if (!actual.email && rawEmail(raw)) actual.email = rawEmail(raw)
+    if (!actual.web && rawWeb(raw)) actual.web = rawWeb(raw)
+    if (!actual.telefono && rawTelefono(raw)) actual.telefono = rawTelefono(raw)
+    if (!actual.contactoFuente && rawFuenteContacto(raw)) actual.contactoFuente = rawFuenteContacto(raw)
+    if (oppKey) actual.opportunityKey = oppKey
+    actual.emailVerificado ||= emailVerificado(raw)
     if (fecha && (!actual.primera || fecha < actual.primera)) actual.primera = fecha
     if (fecha && (!actual.ultima || fecha > actual.ultima)) actual.ultima = fecha
   }
 
-  return [...map.values()].map((e, index): Empresa => ({
-    id: `emp_${index + 1}`,
-    nombre: e.nombre,
-    web: e.web,
-    telefono: "",
-    email: e.email,
-    municipio: e.municipio,
-    provincia: e.provincia,
-    sector: e.tipoPerfil,
-    oportunidades: e.oportunidades,
-    estadoComercial: (e.contactada ? "En seguimiento" : "Sin contactar") as EstadoComercial,
-    primeraDeteccion: e.primera,
-    ultimaActividad: e.ultima,
-    notas: e.descripcion,
-    perfilBuscado: e.perfilBuscado,
-    tipoPerfil: e.tipoPerfil,
-  }))
+  return [...map.values()]
+    .filter((e) => e.emailVerificado && emailValido(e.email))
+    .map((e, index): Empresa => ({
+      id: `emp_${index + 1}_${normalize(e.nombre).replace(/[^a-z0-9]+/g, "_").slice(0, 32)}`,
+      nombre: e.nombre,
+      web: e.web,
+      telefono: e.telefono,
+      email: e.email,
+      emailVerificado: e.emailVerificado,
+      contactoFuente: e.contactoFuente,
+      opportunityKey: e.opportunityKey,
+      municipio: e.municipio,
+      provincia: e.provincia,
+      sector: e.tipoPerfil,
+      oportunidades: e.oportunidades,
+      estadoComercial: (e.contactada ? "En seguimiento" : "Sin contactar") as EstadoComercial,
+      primeraDeteccion: e.primera,
+      ultimaActividad: e.ultima,
+      notas: e.descripcion,
+      perfilBuscado: e.perfilBuscado,
+      tipoPerfil: e.tipoPerfil,
+    }))
+    .sort((a, b) => (asDate(b.ultimaActividad)?.getTime() ?? 0) - (asDate(a.ultimaActividad)?.getTime() ?? 0))
 }
 
 export async function getPerfiles(): Promise<Perfil[]> {
   const data = await loadDashboard()
-  if (!data || !Array.isArray(data.perfiles)) return getPerfilesDemo()
+  if (!data) return []
 
-  return data.perfiles.map((raw, index) => ({
-    id: clean(raw.id) || `perfil_${index + 1}`,
-    nombre: normalizeTipoPerfil(raw.nombre || raw.Perfil || raw.perfil),
-    activo: raw.activo !== false && raw.Activo !== false,
-  }))
+  const seen = new Set<TipoPerfil>()
+  const out: Perfil[] = []
+
+  for (const raw of data.perfiles || []) {
+    const nombre = normalizeTipoPerfil(raw.nombre || raw.Perfil || raw.perfil)
+    if (nombre === "Otros" || seen.has(nombre)) continue
+    seen.add(nombre)
+    out.push({
+      id: clean(raw.id) || `perfil_${indexSafe(nombre)}`,
+      nombre,
+      activo: raw.activo !== false && raw.Activo !== false,
+    })
+  }
+
+  if (out.length === 0) {
+    for (const o of await liveOportunidades()) {
+      if (o.tipoPerfil === "Otros" || seen.has(o.tipoPerfil)) continue
+      seen.add(o.tipoPerfil)
+      out.push({ id: `perfil_${indexSafe(o.tipoPerfil)}`, nombre: o.tipoPerfil, activo: true })
+    }
+  }
+
+  return out
+}
+
+function indexSafe(value: unknown) {
+  return normalize(value).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "item"
 }
 
 export async function getOtrosPerfiles(): Promise<OtroPerfil[]> {
   const live = await liveOportunidades()
-  if (!live) return getOtrosPerfilesDemo()
-
   const map = new Map<string, { oportunidades: number; empresas: Set<string>; ultima: string }>()
+
   for (const o of live.filter((x) => x.tipoPerfil === "Otros")) {
     const nombre = o.perfil || o.titulo || "Otro perfil"
     const actual = map.get(nombre) ?? { oportunidades: 0, empresas: new Set<string>(), ultima: "" }
@@ -278,12 +437,11 @@ export async function getOtrosPerfiles(): Promise<OtroPerfil[]> {
 
 export async function getMunicipios(): Promise<Municipio[]> {
   const live = await liveOportunidades()
-  if (!live) return getMunicipiosDemo()
-
   const seen = new Map<string, Municipio>()
+
   for (const o of live) {
     if (!o.municipio) continue
-    const key = `${o.provincia}|${o.municipio}`
+    const key = `${normalize(o.provincia)}|${normalize(o.municipio)}`
     if (!seen.has(key)) {
       seen.set(key, {
         id: `mun_${seen.size + 1}`,
@@ -294,18 +452,17 @@ export async function getMunicipios(): Promise<Municipio[]> {
       })
     }
   }
-  return [...seen.values()]
+
+  return [...seen.values()].sort((a, b) => a.municipio.localeCompare(b.municipio, "es"))
 }
 
 export async function getNotificaciones(): Promise<Notificacion[]> {
   const live = await liveOportunidades()
-  if (!live) return getNotificacionesDemo()
-
   return [...live]
     .sort((a, b) => (asDate(b.fechaDeteccion)?.getTime() ?? 0) - (asDate(a.fechaDeteccion)?.getTime() ?? 0))
     .slice(0, 8)
     .map((o, index) => ({
-      id: `notif_${index + 1}`,
+      id: `notif_${o.id || index + 1}`,
       texto: `${o.empresa}: ${o.titulo}`,
       tiempo: o.fechaDeteccion,
       leida: false,
@@ -314,33 +471,30 @@ export async function getNotificaciones(): Promise<Notificacion[]> {
 }
 
 export async function getSerieOportunidades(periodo: Periodo = "30d"): Promise<PuntoSerie[]> {
-  const live = await liveOportunidades()
-  if (!live) return getSerieOportunidadesDemo(periodo)
-
-  const filtered = filterPeriodo(live, periodo)
+  const filtered = filterPeriodo(await liveOportunidades(), periodo)
   const days = periodo === "hoy" ? 1 : periodo === "7d" ? 7 : 30
   const map = new Map<string, number>()
+
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     d.setDate(d.getDate() - i)
     map.set(d.toISOString().slice(0, 10), 0)
   }
+
   for (const o of filtered) {
     const d = asDate(o.fechaDeteccion)
     if (!d) continue
     const key = d.toISOString().slice(0, 10)
     if (map.has(key)) map.set(key, (map.get(key) || 0) + 1)
   }
+
   return [...map.entries()].map(([fecha, valor]) => ({ fecha, valor }))
 }
 
 export async function getDistribucionPerfiles(periodo: Periodo = "30d"): Promise<DistribucionPerfil[]> {
-  const live = await liveOportunidades()
-  if (!live) return getDistribucionPerfilesDemo(periodo)
-
   const map = new Map<TipoPerfil, number>()
-  for (const o of filterPeriodo(live, periodo)) {
+  for (const o of filterPeriodo(await liveOportunidades(), periodo)) {
     map.set(o.tipoPerfil, (map.get(o.tipoPerfil) || 0) + 1)
   }
   return [...map.entries()]
@@ -349,11 +503,8 @@ export async function getDistribucionPerfiles(periodo: Periodo = "30d"): Promise
 }
 
 export async function getZonasActividad(periodo: Periodo = "30d"): Promise<ZonaActividad[]> {
-  const live = await liveOportunidades()
-  if (!live) return getZonasActividadDemo(periodo)
-
   const map = new Map<string, number>()
-  for (const o of filterPeriodo(live, periodo)) {
+  for (const o of filterPeriodo(await liveOportunidades(), periodo)) {
     const zona = o.zona || o.provincia || "Sin zona"
     map.set(zona, (map.get(zona) || 0) + 1)
   }
@@ -363,11 +514,9 @@ export async function getZonasActividad(periodo: Periodo = "30d"): Promise<ZonaA
 }
 
 export async function getActividadGeografica(periodo: Periodo = "30d"): Promise<PuntoMapa[]> {
-  const live = await liveOportunidades()
-  if (!live) return getActividadGeograficaDemo(periodo)
-
   const porMunicipio = new Map<string, { provincia: string; oportunidades: number; empresas: Set<string> }>()
-  for (const o of filterPeriodo(live, periodo)) {
+
+  for (const o of filterPeriodo(await liveOportunidades(), periodo)) {
     if (!o.municipio || !municipioCoords[o.municipio]) continue
     const actual = porMunicipio.get(o.municipio) ?? {
       provincia: o.provincia,
@@ -392,13 +541,10 @@ export async function getActividadGeografica(periodo: Periodo = "30d"): Promise<
 }
 
 export async function getKpis(periodo: Periodo = "30d"): Promise<Kpi[]> {
-  const live = await liveOportunidades()
-  if (!live) return getKpisDemo(periodo)
-
-  const items = filterPeriodo(live, periodo)
-  const empresas = new Set(items.map((o) => o.empresa).filter(Boolean))
+  const items = filterPeriodo(await liveOportunidades(), periodo)
+  const empresas = new Set(items.map((o) => normalize(o.empresa)).filter(Boolean))
   const contactadas = items.filter((o) => o.estado === "Contactada").length
-  const porContactar = Math.max(0, items.length - contactadas)
+  const porContactar = items.filter((o) => o.estado !== "Contactada" && o.estado !== "Descartada").length
 
   return [
     { id: "nuevas", etiqueta: "Nuevas oportunidades", valor: items.length, deltaEtiqueta: etiquetaPeriodoTexto(periodo) },
@@ -409,5 +555,7 @@ export async function getKpis(periodo: Periodo = "30d"): Promise<Kpi[]> {
 }
 
 export function etiquetaPeriodoTexto(periodo: Periodo): string {
-  return etiquetaPeriodoTextoDemo(periodo)
+  if (periodo === "hoy") return "Hoy"
+  if (periodo === "7d") return "Últimos 7 días"
+  return "Últimos 30 días"
 }
