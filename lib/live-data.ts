@@ -349,7 +349,7 @@ export async function getEmpresas(): Promise<Empresa[]> {
     if (!actual.web && rawWeb(raw)) actual.web = rawWeb(raw)
     if (!actual.telefono && rawTelefono(raw)) actual.telefono = rawTelefono(raw)
     if (!actual.contactoFuente && rawFuenteContacto(raw)) actual.contactoFuente = rawFuenteContacto(raw)
-    if (oppKey) actual.opportunityKey = oppKey
+    if (!actual.opportunityKey && oppKey) actual.opportunityKey = oppKey
     actual.emailVerificado ||= emailVerificado(raw)
     if (fecha && (!actual.primera || fecha < actual.primera)) actual.primera = fecha
     if (fecha && (!actual.ultima || fecha > actual.ultima)) actual.ultima = fecha
