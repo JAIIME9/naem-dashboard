@@ -221,6 +221,8 @@ export function EmpresasGrid({
           puesto: getPuesto(empresa),
           municipio: empresa.municipio,
           email: empresa.email,
+          provincia: empresa.provincia,
+          opportunity_key: empresa.opportunityKey,
         }),
       })
 
