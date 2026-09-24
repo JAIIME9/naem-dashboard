@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { Suspense } from "react"
 import { OportunidadesTable } from "@/components/oportunidades/oportunidades-table"
 import { PageHeader } from "@/components/page-header"
