@@ -182,11 +182,11 @@ function normalizePrioridad(value: unknown): Prioridad {
 
 const fetchDashboardCached = unstable_cache(
   async (): Promise<DashboardPayload | null> => {
-    if (!DASHBOARD_WEBHOOK || !WEBHOOK_SECRET) return null
+    if (!DASHBOARD_WEBHOOK || !WEBHOOK_SECRET) throw new Error("Falta la configuración del webhook")
 
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8_000)
+      const timeout = setTimeout(() => controller.abort(), 20_000)
       let response: Response
 
       try {
@@ -204,9 +204,9 @@ const fetchDashboardCached = unstable_cache(
         clearTimeout(timeout)
       }
 
-      if (!response.ok) return null
+      if (!response.ok) throw new Error(`Webhook HTTP ${response.status}`)
       const data = (await response.json().catch(() => null)) as DashboardPayload | null
-      if (!data || data.ok !== true || !Array.isArray(data.oportunidades)) return null
+      if (!data || data.ok !== true || !Array.isArray(data.oportunidades)) throw new Error("Respuesta incompleta del webhook")
 
       return {
         ...data,
@@ -214,8 +214,8 @@ const fetchDashboardCached = unstable_cache(
         oportunidades: data.oportunidades.filter(rawContactable),
         perfiles: Array.isArray(data.perfiles) ? data.perfiles : [],
       }
-    } catch {
-      return null
+    } catch (error) {
+      throw error
     }
   },
   ["naem-dashboard-contactable-v1"],
@@ -224,7 +224,13 @@ const fetchDashboardCached = unstable_cache(
 
 // Deduplica todas las llamadas de una misma navegación. Antes cada widget del
 // resumen disparaba su propio webhook de n8n, provocando varias ejecuciones por clic.
-const loadDashboard = cache(fetchDashboardCached)
+const loadDashboard = cache(async (): Promise<DashboardPayload | null> => {
+  try {
+    return await fetchDashboardCached()
+  } catch {
+    return null
+  }
+})
 
 function toOportunidad(raw: RawOpportunity, index: number): Oportunidad {
   const perfilDetectado = clean(raw.perfilDetectado || raw["Perfil detectado"] || raw.perfil)
