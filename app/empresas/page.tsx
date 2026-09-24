@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { Suspense } from "react"
 import { EmpresasGrid } from "@/components/empresas/empresas-grid"
 import { PageHeader } from "@/components/page-header"
