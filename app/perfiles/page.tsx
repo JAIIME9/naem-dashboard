@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { PageHeader } from "@/components/page-header"
 import { PerfilesPanel } from "@/components/perfiles/perfiles-panel"
 import { getEmpresas, getOportunidades, getOtrosPerfiles, getPerfiles } from "@/lib/live-data"
