@@ -73,6 +73,17 @@ function PerfilLogo({ tipoPerfil = "Otros" }: { tipoPerfil?: TipoPerfil }) {
   )
 }
 
+function externalUrl(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  try {
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : "https://" + trimmed)
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : ""
+  } catch {
+    return ""
+  }
+}
+
 function fechaRespuesta(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -561,22 +572,20 @@ export function EmpresasGrid({
                 Contacto
               </p>
               <div className="flex flex-col gap-2 text-sm">
-                <a
-                  href={`https://${selected.web}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-brand transition-colors hover:text-brand/80"
-                >
-                  <Globe className="size-3.5 shrink-0" strokeWidth={1.75} />
-                  {selected.web}
-                </a>
-                <a
-                  href={`tel:${selected.telefono.replace(/\s/g, "")}`}
-                  className="flex items-center gap-2 text-brand transition-colors hover:text-brand/80"
-                >
-                  <Phone className="size-3.5 shrink-0" strokeWidth={1.75} />
-                  {selected.telefono}
-                </a>
+                {externalUrl(selected.web) && (
+                  <a href={externalUrl(selected.web)} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-brand transition-colors hover:text-brand/80">
+                    <Globe className="size-3.5 shrink-0" strokeWidth={1.75} />
+                    {selected.web}
+                  </a>
+                )}
+                {selected.telefono.trim() && (
+                  <a href={"tel:" + selected.telefono.replace(/\s/g, "")}
+                    className="flex items-center gap-2 text-brand transition-colors hover:text-brand/80">
+                    <Phone className="size-3.5 shrink-0" strokeWidth={1.75} />
+                    {selected.telefono}
+                  </a>
+                )}
                 <span className="flex items-center gap-2 text-foreground">
                   <Mail className="size-3.5 shrink-0" strokeWidth={1.75} />
                   {selected.email}
@@ -590,9 +599,14 @@ export function EmpresasGrid({
                   Oportunidades relacionadas
                 </p>
                 <ul className="flex flex-col gap-1.5">
-                  {oportunidadesEmpresa.slice(0, 5).map((o) => (
+                  {oportunidadesEmpresa.map((o) => (
                     <li key={o.id} className="flex items-center gap-2 text-sm">
-                      <span className="min-w-0 flex-1 truncate text-foreground">{o.titulo}</span>
+                      {externalUrl(o.urlOferta) ? (
+                        <a href={externalUrl(o.urlOferta)} target="_blank" rel="noopener noreferrer"
+                          className="min-w-0 flex-1 truncate text-brand hover:underline">{o.titulo}</a>
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate text-foreground">{o.titulo}</span>
+                      )}
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {tiempoRelativo(o.fechaDeteccion)}
                       </span>
