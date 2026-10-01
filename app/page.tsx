@@ -6,12 +6,16 @@ import { OportunidadesRecientes } from "@/components/resumen/oportunidades-recie
 import { PerfilesDonut } from "@/components/resumen/perfiles-donut"
 import { ZonasWidget } from "@/components/resumen/zonas-widget"
 import {
-  getDistribucionPerfiles,
   getKpis,
+  getOportunidades,
   getOportunidadesRecientes,
   getSerieOportunidades,
-  getZonasActividad,
 } from "@/lib/live-data"
+import {
+  buildProfileDistribution,
+  buildProvinceActivity,
+  filterOportunidadesPeriodo,
+} from "@/lib/presentation"
 import type { Periodo } from "@/lib/types"
 
 function normalizePeriodo(value: string | string[] | undefined): Periodo {
@@ -27,13 +31,16 @@ export default async function ResumenPage({
   const { periodo: periodoParam } = await searchParams
   const periodo = normalizePeriodo(periodoParam)
 
-  const [kpis, serie, distribucion, zonas, recientes] = await Promise.all([
+  const [kpis, serie, recientes, oportunidades] = await Promise.all([
     getKpis(periodo),
     getSerieOportunidades(periodo),
-    getDistribucionPerfiles(periodo),
-    getZonasActividad(periodo),
     getOportunidadesRecientes(6, periodo),
+    getOportunidades(),
   ])
+
+  const delPeriodo = filterOportunidadesPeriodo(oportunidades, periodo)
+  const distribucion = buildProfileDistribution(delPeriodo)
+  const provincias = buildProvinceActivity(delPeriodo)
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 p-5 sm:p-6 lg:p-8">
@@ -58,7 +65,7 @@ export default async function ResumenPage({
         <div className="lg:col-span-2">
           <OportunidadesRecientes data={recientes} />
         </div>
-        <ZonasWidget data={zonas} />
+        <ZonasWidget data={provincias} />
       </div>
     </div>
   )
