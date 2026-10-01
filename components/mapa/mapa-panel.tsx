@@ -7,6 +7,7 @@ import { ArrowRight, MapPin } from "lucide-react"
 
 import { FilterSelect } from "@/components/filter-select"
 import { PeriodSelector } from "@/components/period-selector"
+import { classifyProfile } from "@/lib/presentation"
 import type { PuntoMapa } from "@/lib/geo"
 import type { Oportunidad, Periodo } from "@/lib/types"
 
@@ -29,37 +30,36 @@ export function MapaPanel({
   periodo: Periodo
 }) {
   const [perfil, setPerfil] = useState("")
-  const [zona, setZona] = useState("")
   const [provincia, setProvincia] = useState("")
 
   const tiposPerfil = useMemo(
-    () => [...new Set(oportunidades.map((o) => o.tipoPerfil))].sort(),
-    [oportunidades],
-  )
-  const zonas = useMemo(
-    () => [...new Set(oportunidades.map((o) => o.zona))].sort(),
+    () => [...new Set(oportunidades.map((o) => classifyProfile(o.titulo, o.perfil, o.tipoPerfil)))].sort(),
     [oportunidades],
   )
   const provincias = useMemo(
-    () => [...new Set(oportunidades.map((o) => o.provincia))].sort(),
+    () => [...new Set(oportunidades.map((o) => o.provincia).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
     [oportunidades],
   )
 
   const filteredPoints = useMemo(() => {
-    if (!perfil && !zona && !provincia) return points
+    if (!perfil && !provincia) return points
     return points.filter((p) => {
-      const opps = oportunidades.filter(
-        (o) => o.municipio === p.municipio,
-      )
-      if (perfil && !opps.some((o) => o.tipoPerfil === perfil)) return false
-      if (zona && p.zona !== zona) return false
+      const opps = oportunidades.filter((o) => o.municipio === p.municipio && o.provincia === p.provincia)
+      if (perfil && !opps.some((o) => classifyProfile(o.titulo, o.perfil, o.tipoPerfil) === perfil)) return false
       if (provincia && p.provincia !== provincia) return false
       return true
     })
-  }, [points, oportunidades, perfil, zona, provincia])
+  }, [points, oportunidades, perfil, provincia])
 
   const totalOportunidades = filteredPoints.reduce((acc, p) => acc + p.oportunidades, 0)
+  const totalEmpresas = new Set(
+    oportunidades
+      .filter((o) => (!provincia || o.provincia === provincia) && (!perfil || classifyProfile(o.titulo, o.perfil, o.tipoPerfil) === perfil))
+      .map((o) => o.empresa)
+      .filter(Boolean),
+  ).size
   const max = Math.max(...filteredPoints.map((p) => p.oportunidades), 1)
+  const topMunicipios = filteredPoints.slice(0, 12)
 
   return (
     <div className="flex flex-col gap-4">
@@ -73,14 +73,6 @@ export function MapaPanel({
           className="sm:w-40"
         />
         <FilterSelect
-          ariaLabel="Filtrar por zona"
-          placeholder="Todas las zonas"
-          value={zona}
-          onChange={setZona}
-          options={zonas.map((z) => ({ value: z, label: z }))}
-          className="sm:w-36"
-        />
-        <FilterSelect
           ariaLabel="Filtrar por provincia"
           placeholder="Todas las provincias"
           value={provincia}
@@ -91,6 +83,12 @@ export function MapaPanel({
         <div className="sm:ml-auto">
           <PeriodSelector value={periodo} />
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">{totalOportunidades}</span> oportunidades ·{" "}
+        <span className="font-medium text-foreground">{totalEmpresas}</span> empresas ·{" "}
+        <span className="font-medium text-foreground">{filteredPoints.length}</span> municipios
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -111,30 +109,24 @@ export function MapaPanel({
             </p>
 
             <ul className="mt-4 flex flex-col gap-3">
-              {filteredPoints.map((p) => {
+              {topMunicipios.map((p) => {
                 const topPerfiles = oportunidades
-                  .filter((o) => o.municipio === p.municipio)
+                  .filter((o) => o.municipio === p.municipio && o.provincia === p.provincia)
                   .reduce<Record<string, number>>((acc, o) => {
-                    acc[o.tipoPerfil] = (acc[o.tipoPerfil] || 0) + 1
+                    const tipo = classifyProfile(o.titulo, o.perfil, o.tipoPerfil)
+                    acc[tipo] = (acc[tipo] || 0) + 1
                     return acc
                   }, {})
-                const top3 = Object.entries(topPerfiles)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 3)
+                const top3 = Object.entries(topPerfiles).sort((a, b) => b[1] - a[1]).slice(0, 3)
 
                 return (
-                  <li key={p.municipio} className="flex flex-col gap-1.5">
+                  <li key={`${p.provincia}-${p.municipio}`} className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-foreground">{p.municipio}</span>
-                      <span className="tabular-nums text-muted-foreground">
-                        {p.oportunidades}
-                      </span>
+                      <span className="tabular-nums text-muted-foreground">{p.oportunidades}</span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full bg-brand"
-                        style={{ width: `${(p.oportunidades / max) * 100}%` }}
-                      />
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${(p.oportunidades / max) * 100}%` }} />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">
