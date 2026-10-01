@@ -1,15 +1,18 @@
 "use client"
 
-import { FormEvent, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { type FormEvent, useEffect, useState } from "react"
 import { LockKeyhole } from "lucide-react"
 
 export default function LoginPage() {
-  const searchParams = useSearchParams()
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const configError = searchParams.get("config") === "1"
+  const [configError, setConfigError] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setConfigError(params.get("config") === "1")
+  }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -28,7 +31,8 @@ export default function LoginPage() {
         return
       }
 
-      const next = searchParams.get("next")
+      const params = new URLSearchParams(window.location.search)
+      const next = params.get("next")
       window.location.href = next && next.startsWith("/") ? next : "/"
     } catch {
       setError("No se ha podido conectar con el servidor")
