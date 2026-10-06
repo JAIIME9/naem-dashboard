@@ -36,6 +36,13 @@ export const municipioCoords: Record<string, { lat: number; lng: number }> = {
   "La Mojonera": { lat: 36.7532, lng: -2.6853 },
   "Gallardos, Los": { lat: 37.1681, lng: -1.9396 },
   "Los Gallardos": { lat: 37.1681, lng: -1.9396 },
+  Albacete: { lat: 38.9943, lng: -1.8585 },
+  Hellín: { lat: 38.5106, lng: -1.7009 },
+  Almansa: { lat: 38.869, lng: -1.0972 },
+  Villarrobledo: { lat: 39.2669, lng: -2.6011 },
+  "La Roda": { lat: 39.2072, lng: -2.1586 },
+  "Roda, La": { lat: 39.2072, lng: -2.1586 },
+  Caudete: { lat: 38.7036, lng: -0.9876 },
 }
 
 const provinceCenters: Record<string, { lat: number; lng: number }> = {
@@ -43,6 +50,7 @@ const provinceCenters: Record<string, { lat: number; lng: number }> = {
   Alicante: { lat: 38.4, lng: -0.55 },
   Murcia: { lat: 37.95, lng: -1.25 },
   Almería: { lat: 37.05, lng: -2.35 },
+  Albacete: { lat: 38.85, lng: -1.95 },
 }
 
 function hash(value: string) {
@@ -106,4 +114,4 @@ export function buildActividadPoints(items: Oportunidad[]): PuntoMapa[] {
     .sort((a, b) => b.oportunidades - a.oportunidades)
 }
 
-export const centroMapa: [number, number] = [38.35, -0.9]
+export const centroMapa: [number, number] = [38.4, -1.2]

@@ -52,7 +52,7 @@ export function buildProfileDistribution(items: Oportunidad[]): DistribucionPerf
 }
 
 export function buildProvinceActivity(items: Oportunidad[]): ZonaActividad[] {
-  const provincias = ["Valencia", "Alicante", "Murcia", "Almería"]
+  const provincias = ["Valencia", "Alicante", "Murcia", "Almería", "Albacete"]
   const counts = new Map(provincias.map((p) => [p, 0]))
   for (const o of items) {
     const p = clean(o.provincia)

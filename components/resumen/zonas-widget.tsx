@@ -13,7 +13,7 @@ export function ZonasWidget({ data }: { data: ZonaActividad[] }) {
         <h2 className="text-sm font-medium text-foreground">Actividad por provincia</h2>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {total} oportunidades distribuidas en Valencia, Alicante, Murcia y Almería
+        {total} oportunidades distribuidas en Valencia, Alicante, Murcia, Almería y Albacete
       </p>
 
       <ul className="mt-5 flex flex-col gap-4">
