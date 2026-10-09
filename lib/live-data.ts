@@ -2,6 +2,7 @@ import { cache } from "react"
 import { unstable_cache } from "next/cache"
 
 import { municipioCoords, type PuntoMapa } from "./geo"
+import { classifyProfile, limpiarFuente, movilWhatsapp, perfilDesdeDescripcion, tituloPuesto } from "./presentation"
 import type {
   DistribucionPerfil,
   Empresa,
@@ -235,8 +236,13 @@ const loadDashboard = cache(async (): Promise<DashboardPayload | null> => {
 function toOportunidad(raw: RawOpportunity, index: number): Oportunidad {
   const perfilDetectado = clean(raw.perfilDetectado || raw["Perfil detectado"] || raw.perfil)
   const tipoRaw = clean(raw.tipoPerfil || raw["Tipo de perfil"] || perfilDetectado)
-  const titulo = clean(raw.titulo || raw.oportunidad || raw.Oportunidad) || "Oportunidad detectada"
+  // El título del puesto sale de "Empresa — Puesto"; perfil_detectado en filas antiguas era solo una palabra clave.
+  const titulo =
+    tituloPuesto(raw.oportunidad || raw.Oportunidad) || clean(raw.titulo) || "Oportunidad detectada"
   const empresa = rawEmpresa(raw)
+  const descripcion = clean(raw.descripcion || raw.Descripción)
+  let tipoPerfil = classifyProfile(titulo, tipoRaw, perfilDetectado)
+  if (tipoPerfil === "Otros") tipoPerfil = perfilDesdeDescripcion(descripcion) || "Otros"
 
   return {
     id: clean(raw.id) || clean(raw.opportunityKey || raw.opportunity_key || raw["Opportunity Key"]) || `opp_${index + 1}`,
@@ -244,17 +250,17 @@ function toOportunidad(raw: RawOpportunity, index: number): Oportunidad {
     titulo,
     empresa,
     perfil: clean(raw.perfil) || perfilDetectado || tipoRaw || "Otros",
-    tipoPerfil: normalizeTipoPerfil(tipoRaw),
+    tipoPerfil,
     municipio: clean(raw.municipio || raw.Municipio),
     provincia: clean(raw.provincia || raw.Provincia),
     zona: clean(raw.zona || raw.Zona),
     urlOferta: clean(raw.url || raw.URL),
-    fuente: clean(raw.fuente || raw.Fuente),
+    fuente: limpiarFuente(raw.fuente || raw.Fuente),
     fechaPublicacion: clean(raw.fechaPublicacion || raw["Fecha publicación"]),
     fechaDeteccion: clean(raw.fechaDeteccion || raw["Fecha detección"]),
     estado: normalizeEstado(raw),
     prioridad: normalizePrioridad(raw.prioridad || raw.Prioridad),
-    descripcion: clean(raw.descripcion || raw.Descripción),
+    descripcion,
     notas: clean(raw.notas || raw.Notas),
   }
 }
@@ -322,8 +328,9 @@ export async function getEmpresas(): Promise<Empresa[]> {
 
     const fecha = clean(raw.fechaDeteccion || raw["Fecha detección"])
     const actual = map.get(key)
-    const perfil = clean(raw.perfilDetectado || raw["Perfil detectado"] || raw.perfil)
-    const tipo = normalizeTipoPerfil(raw.tipoPerfil || raw["Tipo de perfil"] || perfil)
+    const opp = toOportunidad(raw, 0)
+    const perfil = opp.titulo
+    const tipo = opp.tipoPerfil
     const contacto = normalize(raw.contactoEstado || raw.contacto_estado || raw["Contacto estado"])
     const oppKey = clean(raw.opportunityKey || raw.opportunity_key || raw["Opportunity Key"])
 
@@ -333,7 +340,7 @@ export async function getEmpresas(): Promise<Empresa[]> {
         web: rawWeb(raw),
         email: rawEmail(raw),
         emailVerificado: emailVerificado(raw),
-        telefono: rawTelefono(raw),
+        telefono: movilWhatsapp(rawTelefono(raw)),
         contactoFuente: rawFuenteContacto(raw),
         opportunityKey: oppKey,
         municipio: clean(raw.municipio || raw.Municipio),
@@ -353,7 +360,7 @@ export async function getEmpresas(): Promise<Empresa[]> {
     actual.contactada ||= contacto === "contactado" || contacto === "contactada" || contacto === "enviado"
     if (!actual.email && rawEmail(raw)) actual.email = rawEmail(raw)
     if (!actual.web && rawWeb(raw)) actual.web = rawWeb(raw)
-    if (!actual.telefono && rawTelefono(raw)) actual.telefono = rawTelefono(raw)
+    if (!actual.telefono && movilWhatsapp(rawTelefono(raw))) actual.telefono = movilWhatsapp(rawTelefono(raw))
     if (!actual.contactoFuente && rawFuenteContacto(raw)) actual.contactoFuente = rawFuenteContacto(raw)
     if (!actual.opportunityKey && oppKey) actual.opportunityKey = oppKey
     actual.emailVerificado ||= emailVerificado(raw)
