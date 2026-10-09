@@ -555,13 +555,16 @@ export async function getActividadGeografica(periodo: Periodo = "30d"): Promise<
 
 export async function getKpis(periodo: Periodo = "30d"): Promise<Kpi[]> {
   const items = filterPeriodo(await liveOportunidades(), periodo)
-  const empresas = new Set(items.map((o) => normalize(o.empresa)).filter(Boolean))
-  const contactadas = items.filter((o) => o.estado === "Contactada").length
-  const porContactar = items.filter((o) => o.estado !== "Contactada" && o.estado !== "Descartada").length
+  // Empresas, por contactar y contactadas cuentan EMPRESAS con email válido (igual que la pestaña Empresas),
+  // no ofertas: una empresa con varias ofertas cuenta una vez.
+  const nombresPeriodo = new Set(items.map((o) => normalize(o.empresa)).filter(Boolean))
+  const empresas = (await getEmpresas()).filter((e) => nombresPeriodo.has(normalize(e.nombre)))
+  const contactadas = empresas.filter((e) => e.estadoComercial !== "Sin contactar").length
+  const porContactar = empresas.length - contactadas
 
   return [
     { id: "nuevas", etiqueta: "Nuevas oportunidades", valor: items.length, deltaEtiqueta: etiquetaPeriodoTexto(periodo) },
-    { id: "empresas", etiqueta: "Empresas detectadas", valor: empresas.size, deltaEtiqueta: etiquetaPeriodoTexto(periodo) },
+    { id: "empresas", etiqueta: "Empresas detectadas", valor: empresas.length, deltaEtiqueta: etiquetaPeriodoTexto(periodo) },
     { id: "por-contactar", etiqueta: "Por contactar", valor: porContactar, deltaEtiqueta: etiquetaPeriodoTexto(periodo) },
     { id: "contactadas", etiqueta: "Contactadas", valor: contactadas, deltaEtiqueta: etiquetaPeriodoTexto(periodo) },
   ]
