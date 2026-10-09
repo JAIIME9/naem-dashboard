@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   BellRing,
@@ -15,12 +15,14 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
   MessageSquareReply,
   Phone,
   RefreshCw,
   Search,
   SearchX,
   Send,
+  SendHorizontal,
   Sparkles,
   Store,
   Tag,
@@ -35,6 +37,8 @@ import { EstadoComercialBadge } from "@/components/status-badge"
 import { Drawer } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { tiempoRelativo, fechaCorta } from "@/lib/format"
+import { MUNICIPIOS_POR_PROVINCIA, PROVINCIAS_NAEM } from "@/lib/municipios"
+import { formatoTelefono, mensajeWhatsapp, urlWhatsapp } from "@/lib/presentation"
 import type { Empresa, EstadoComercial, Oportunidad, TipoPerfil } from "@/lib/types"
 
 const ESTADOS: EstadoComercial[] = [
@@ -107,7 +111,7 @@ export function EmpresasGrid({
   const initialEstado = searchParams.get("estado") ?? ""
   const [query, setQuery] = useState("")
   const [estado, setEstado] = useState(initialEstado)
-  const [sector, setSector] = useState("")
+  const [provincia, setProvincia] = useState("")
   const [municipioFiltro, setMunicipioFiltro] = useState("")
   const [selected, setSelected] = useState<Empresa | null>(
     () => data.find((e) => e.nombre === initialEmpresa) ?? null,
@@ -121,20 +125,19 @@ export function EmpresasGrid({
   const [comprobandoRespuestas, setComprobandoRespuestas] = useState(false)
   const [errorRespuestas, setErrorRespuestas] = useState("")
 
-  const sectores = useMemo(
-    () => [...new Set(localData.map((e) => e.sector))].sort(),
-    [localData],
-  )
-  const municipios = useMemo(
-    () => [...new Set(localData.map((e) => e.municipio))].sort(),
-    [localData],
-  )
+  // Con una provincia elegida se listan todos sus municipios; sin provincia, solo los que tienen empresas.
+  const municipios = useMemo(() => {
+    const base = provincia ? localData.filter((e) => e.provincia === provincia) : localData
+    const nombres = new Set(base.map((e) => e.municipio).filter(Boolean))
+    if (provincia) for (const m of MUNICIPIOS_POR_PROVINCIA[provincia] ?? []) nombres.add(m)
+    return [...nombres].sort((a, b) => a.localeCompare(b, "es"))
+  }, [localData, provincia])
 
   const filtradas = useMemo(() => {
     const q = query.trim().toLowerCase()
     return localData.filter((e) => {
       if (estado && e.estadoComercial !== estado) return false
-      if (sector && e.sector !== sector) return false
+      if (provincia && e.provincia !== provincia) return false
       if (municipioFiltro && e.municipio !== municipioFiltro) return false
       if (
         q &&
@@ -145,7 +148,7 @@ export function EmpresasGrid({
         return false
       return true
     })
-  }, [localData, query, estado, sector, municipioFiltro])
+  }, [localData, query, estado, provincia, municipioFiltro])
 
   const empresasComprobables = useMemo(
     () =>
@@ -218,11 +221,8 @@ export function EmpresasGrid({
     )
   }
 
-  const contactarEmpresa = async (empresa: Empresa) => {
-    if (contactando || enviados.has(empresa.id)) return
-    setErrorContacto("")
-    setContactando(empresa.id)
-
+  // Envía el email a una empresa. Devuelve true si se envió.
+  const enviarEmail = async (empresa: Empresa): Promise<boolean> => {
     try {
       const response = await fetch("/api/contact-company", {
         method: "POST",
@@ -247,13 +247,68 @@ export function EmpresasGrid({
         setSimulados((prev) => new Set([...prev, empresa.id]))
       }
       updateEstado(empresa.id, "En seguimiento")
+      return true
     } catch (error) {
       setErrorContacto(
-        error instanceof Error ? error.message : "No se pudo enviar el email",
+        `${empresa.nombre}: ${error instanceof Error ? error.message : "No se pudo enviar el email"}`,
       )
+      return false
+    }
+  }
+
+  const contactarEmpresa = async (empresa: Empresa) => {
+    if (contactando || masivo?.activo || enviados.has(empresa.id)) return
+    setErrorContacto("")
+    setContactando(empresa.id)
+    try {
+      await enviarEmail(empresa)
     } finally {
       setContactando(null)
     }
+  }
+
+  // Envío a todas las empresas pendientes, una detrás de otra.
+  const [masivo, setMasivo] = useState<{ activo: boolean; total: number; hechos: number; ok: number; fallos: number } | null>(null)
+  const detenerMasivo = useRef(false)
+
+  const pendientes = useMemo(
+    () => localData.filter((e) => e.estadoComercial === "Sin contactar" && !enviados.has(e.id) && e.email),
+    [localData, enviados],
+  )
+
+  const contactarTodas = async () => {
+    if (contactando || masivo?.activo || pendientes.length === 0) return
+    const lista = [...pendientes]
+    const ok = window.confirm(
+      `Se enviará el email de contacto a ${lista.length} ${lista.length === 1 ? "empresa pendiente" : "empresas pendientes"}. ¿Continuar?`,
+    )
+    if (!ok) return
+
+    detenerMasivo.current = false
+    setErrorContacto("")
+    let enviadosOk = 0
+    let fallos = 0
+    setMasivo({ activo: true, total: lista.length, hechos: 0, ok: 0, fallos: 0 })
+
+    for (let i = 0; i < lista.length; i++) {
+      if (detenerMasivo.current) break
+      setContactando(lista[i].id)
+      const enviado = await enviarEmail(lista[i])
+      if (enviado) enviadosOk++
+      else fallos++
+      setMasivo({ activo: true, total: lista.length, hechos: i + 1, ok: enviadosOk, fallos })
+      // Pausa entre envíos para no saturar el servidor de correo.
+      if (i < lista.length - 1 && !detenerMasivo.current) await new Promise((r) => setTimeout(r, 2000))
+    }
+
+    setContactando(null)
+    setMasivo((prev) => (prev ? { ...prev, activo: false } : prev))
+  }
+
+  const abrirWhatsapp = (empresa: Empresa) => {
+    if (!empresa.telefono) return
+    const url = urlWhatsapp(empresa.telefono, mensajeWhatsapp(empresa.nombre, getPuesto(empresa)))
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   const respuestaIds = Object.keys(respuestas)
@@ -288,6 +343,46 @@ export function EmpresasGrid({
         </button>
       )}
 
+      {(pendientes.length > 0 || masivo) && (
+        <div className="flex flex-col gap-3 rounded-xl border border-brand/25 bg-brand-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            {masivo?.activo ? (
+              <>
+                <p className="text-sm font-semibold text-foreground">
+                  Enviando emails… {masivo.hechos} de {masivo.total}
+                </p>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary sm:w-72">
+                  <div
+                    className="h-full rounded-full bg-brand transition-all"
+                    style={{ width: `${Math.round((masivo.hechos / Math.max(1, masivo.total)) * 100)}%` }}
+                  />
+                </div>
+              </>
+            ) : masivo ? (
+              <p className="text-sm font-semibold text-foreground">
+                Envío terminado: {masivo.ok} {masivo.ok === 1 ? "email enviado" : "emails enviados"}
+                {masivo.fallos > 0 ? ` · ${masivo.fallos} sin enviar` : ""}
+                {pendientes.length > 0 ? ` · quedan ${pendientes.length} pendientes` : ""}
+              </p>
+            ) : (
+              <p className="text-sm font-semibold text-foreground">
+                Tienes {pendientes.length} {pendientes.length === 1 ? "empresa pendiente" : "empresas pendientes"} de contactar
+              </p>
+            )}
+          </div>
+          {masivo?.activo ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => { detenerMasivo.current = true }}>
+              Detener
+            </Button>
+          ) : pendientes.length > 0 ? (
+            <Button type="button" disabled={!!contactando} onClick={() => void contactarTodas()}>
+              <SendHorizontal className="size-4" />
+              CONTACTAR A TODAS ({pendientes.length})
+            </Button>
+          ) : null}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative flex-1 sm:min-w-64">
           <Search
@@ -311,11 +406,14 @@ export function EmpresasGrid({
           className="sm:w-44"
         />
         <FilterSelect
-          ariaLabel="Filtrar por sector"
-          placeholder="Todos los sectores"
-          value={sector}
-          onChange={setSector}
-          options={sectores.map((s) => ({ value: s, label: s }))}
+          ariaLabel="Filtrar por provincia"
+          placeholder="Todas las provincias"
+          value={provincia}
+          onChange={(value) => {
+            setProvincia(value)
+            setMunicipioFiltro("")
+          }}
+          options={PROVINCIAS_NAEM.map((p) => ({ value: p, label: p }))}
           className="sm:w-44"
         />
         <FilterSelect
@@ -405,6 +503,12 @@ export function EmpresasGrid({
                     <Mail className="size-3.5 shrink-0" strokeWidth={1.75} />
                     <span className="truncate">{e.email}</span>
                   </div>
+                  {e.telefono && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="size-3.5 shrink-0" strokeWidth={1.75} />
+                      <span className="truncate">{formatoTelefono(e.telefono)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Target className="size-3.5 shrink-0" strokeWidth={1.75} />
                     <span className="truncate">
@@ -413,7 +517,7 @@ export function EmpresasGrid({
                   </div>
                 </dl>
 
-                <div className="border-t border-border pt-3">
+                <div className={`grid gap-2 border-t border-border pt-3 ${e.telefono ? "grid-cols-2" : "grid-cols-1"}`}>
                   <Button
                     type="button"
                     className="w-full"
@@ -441,6 +545,20 @@ export function EmpresasGrid({
                       </>
                     )}
                   </Button>
+                  {e.telefono && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        abrirWhatsapp(e)
+                      }}
+                    >
+                      <MessageCircle className="size-4" />
+                      WHATSAPP
+                    </Button>
+                  )}
                 </div>
               </article>
             )
@@ -488,6 +606,18 @@ export function EmpresasGrid({
                 </>
               )}
             </Button>
+
+            {selected.telefono && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => abrirWhatsapp(selected)}
+              >
+                <MessageCircle className="size-4" />
+                CONTACTAR POR WHATSAPP
+              </Button>
+            )}
 
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -547,7 +677,7 @@ export function EmpresasGrid({
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <DetailItem icon={Tag} label="Sector" value={selected.sector} />
+              <DetailItem icon={Tag} label="Perfil" value={selected.sector} />
               <DetailItem icon={MapPin} label="Municipio" value={selected.municipio} />
               <DetailItem icon={MapPin} label="Provincia" value={selected.provincia} />
               <DetailItem
@@ -579,12 +709,12 @@ export function EmpresasGrid({
                     {selected.web}
                   </a>
                 )}
-                {selected.telefono.trim() && (
-                  <a href={"tel:" + selected.telefono.replace(/\s/g, "")}
-                    className="flex items-center gap-2 text-brand transition-colors hover:text-brand/80">
-                    <Phone className="size-3.5 shrink-0" strokeWidth={1.75} />
-                    {selected.telefono}
-                  </a>
+                {selected.telefono && (
+                  <button type="button" onClick={() => abrirWhatsapp(selected)}
+                    className="flex items-center gap-2 text-left text-emerald-700 transition-colors hover:text-emerald-800">
+                    <MessageCircle className="size-3.5 shrink-0" strokeWidth={1.75} />
+                    {formatoTelefono(selected.telefono)} (WhatsApp)
+                  </button>
                 )}
                 <span className="flex items-center gap-2 text-foreground">
                   <Mail className="size-3.5 shrink-0" strokeWidth={1.75} />
