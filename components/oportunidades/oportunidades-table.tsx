@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { fechaCorta, tiempoRelativo } from "@/lib/format"
+import { MUNICIPIOS_POR_PROVINCIA, PROVINCIAS_NAEM } from "@/lib/municipios"
 import { titleCaseJob } from "@/lib/presentation"
 import type { EstadoOportunidad, Oportunidad } from "@/lib/types"
 
@@ -48,14 +49,15 @@ export function OportunidadesTable({ data }: { data: Oportunidad[] }) {
   )
   const [localData, setLocalData] = useState<Oportunidad[]>(data)
 
-  const provincias = useMemo(
-    () => [...new Set(localData.map((o) => o.provincia).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
-    [localData],
-  )
+  // Las 5 provincias salen siempre, aunque todavía no haya ofertas en alguna.
+  const provincias = PROVINCIAS_NAEM
 
+  // Con una provincia elegida se listan todos sus municipios; sin provincia, solo los que tienen ofertas.
   const municipios = useMemo(() => {
     const base = provincia ? localData.filter((o) => o.provincia === provincia) : localData
-    return [...new Set(base.map((o) => o.municipio).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"))
+    const nombres = new Set(base.map((o) => o.municipio).filter(Boolean))
+    if (provincia) for (const m of MUNICIPIOS_POR_PROVINCIA[provincia] ?? []) nombres.add(m)
+    return [...nombres].sort((a, b) => a.localeCompare(b, "es"))
   }, [localData, provincia])
 
   const fuentes = useMemo(
