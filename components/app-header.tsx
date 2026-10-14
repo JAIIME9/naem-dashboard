@@ -106,7 +106,7 @@ export function AppHeader() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Perfil</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/planes")}>Planes y suscripción</DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/ajustes")}>Ajustes</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem>Cerrar sesión</DropdownMenuItem>

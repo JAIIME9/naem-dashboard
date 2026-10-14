@@ -1,5 +1,6 @@
 import {
   Building2,
+  Crown,
   LayoutGrid,
   Map,
   Settings,
@@ -57,6 +58,13 @@ export const navPrincipal: NavItem[] = [
 ]
 
 export const navInferior: NavItem[] = [
+  {
+    href: "/planes",
+    label: "Planes",
+    icon: Crown,
+    titulo: "Planes",
+    subtitulo: "Elige cuántas empresas quieres conseguir cada mes.",
+  },
   {
     href: "/ajustes",
     label: "Ajustes",
