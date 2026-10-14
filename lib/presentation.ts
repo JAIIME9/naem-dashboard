@@ -1,7 +1,14 @@
 import type { DistribucionPerfil, Oportunidad, Periodo, TipoPerfil, ZonaActividad } from "./types"
 
+// Repara texto con codificación rota que a veces llega de Adzuna ("EÃ³lico" -> "Eólico", "1Âª" -> "1ª").
+export function arreglarTexto(value: unknown) {
+  return String(value ?? "")
+    .replace(/[Ãã]([\u0080-\u00BF])/g, (_, ch: string) => String.fromCharCode(0xc0 + ch.charCodeAt(0) - 0x80))
+    .replace(/Â([\u0080-\u00BF])/g, "$1")
+}
+
 function clean(value: unknown) {
-  return String(value ?? "").replace(/\s+/g, " ").trim()
+  return arreglarTexto(value).replace(/\s+/g, " ").trim()
 }
 
 function normalize(value: unknown) {
@@ -25,7 +32,7 @@ const PERFIL_REGLAS: [TipoPerfil, RegExp[]][] = [
   ["Almacén", [/\balmacen(?:es)?\b/, /\balmacener[oa]s?\b/, /\bmoz[oa]s?\b/, /\bcarretiller[oa]s?\b/, /\bpreparador(?:a|es|as)? de pedidos\b/, /\bpicking\b/, /\bpickers?\b/, /\blogistic[oa]s?\b/, /\blogistica\b/, /\bwarehouse\b/, /\bcarga y descarga\b/, /\bexpediciones\b/, /\breponedor(?:a|es|as)?\b/]],
   ["Dependientes", [/\bdependient[ae]s?\b/, /\bcajer[oa]s?\b/, /\bvendedor(?:a|es|as)?\b/, /\b(?:shop|sales|store|retail) assistants?\b/, /\bauxiliar de tienda\b/, /\bpersonal de tienda\b/, /\bcharcuter[oa]s?\b/, /\bcarnicer[oa]s?\b/, /\bpescader[oa]s?\b/, /\bfruter[oa]s?\b/]],
   ["Agricultura", [/\bagricol[ae]s?\b/, /\bagrari[oa]s?\b/, /\b(?:peon|peones|operari[oa]s?|trabajador(?:a|es|as)?) de campo\b/, /\brecolector(?:a|es|as)?\b/, /\brecoleccion\b/, /\btractoristas?\b/, /\binvernaderos?\b/, /\bjornaler[oa]s?\b/, /\btemporer[oa]s?\b/, /\bjardiner[oa]s?\b/, /\bjardineria\b/, /\bhortofruticol[ao]s?\b/, /\bmanipulador(?:a|es|as)? de (?:fruta|frutas|verdura|verduras|hortalizas|citricos)\b/, /\benvasador(?:a|es|as)? de (?:fruta|frutas|verdura|verduras|hortalizas)\b/, /\bpodador(?:a|es|as)?\b/, /\bvendimia\b/, /\bganader[oa]s?\b/]],
-  ["Construcción", [/\bconstruccion\b/, /\balbanil(?:es)?\b/, /\bpeon(?:es)? (?:de obra|de la construccion|de construccion|de albanil)\b/, /\bobra civil\b/, /\bencofrador(?:a|es|as)?\b/, /\bferrallistas?\b/, /\bfontaner[oa]s?\b/, /\belectricistas?\b/, /\boficial(?:es)? de (?:obra|albanil|(?:1|2|1a|2a|primera|segunda) (?:de )?(?:albanil|construccion|obra))\b/, /\bcapataz\b/, /\bgruistas?\b/, /\byeser[oa]s?\b/, /\bsolador(?:es)?\b/, /\balicatador(?:es)?\b/, /\bpintor(?:a|es|as)?\b/, /\bescayolistas?\b/, /\b(?:jefe|encargad[oa]) de obra\b/, /\bcarpinter[oa]s?\b/, /\bpladur\b/, /\bandamier[oa]s?\b/, /\bsoldador(?:a|es|as)?\b/]],
+  ["Construcción", [/\bconstruccion\b/, /\balbanil(?:es)?\b/, /\bpeon(?:es)? (?:de obra|de la construccion|de construccion|de albanil)\b/, /\bobra civil\b/, /\bencofrador(?:a|es|as)?\b/, /\bferrallistas?\b/, /\bfontaner[oa]s?\b/, /\belectricistas?\b/, /\boficial(?:es)? de (?:obra|albanil|(?:1|2|1a|2a|primera|segunda) (?:de )?(?:albanil|construccion|obra))\b/, /\bcapataz\b/, /\bgruistas?\b/, /\byeser[oa]s?\b/, /\bsolador(?:es)?\b/, /\balicatador(?:es)?\b/, /\bpintor(?:a|es|as)?\b/, /\bescayolistas?\b/, /\b(?:jef[ea]|encargad[oa])(?: a)? de obra\b/, /\boficial(?:es)? de (?:1|2|1a|2a|primera|segunda)\b/, /\bcarpinter[oa]s?\b/, /\bpladur\b/, /\bandamier[oa]s?\b/, /\bsoldador(?:a|es|as)?\b/]],
 ]
 
 function perfilNorm(v: unknown) {

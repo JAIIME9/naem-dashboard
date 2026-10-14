@@ -2,7 +2,7 @@ import { cache } from "react"
 import { unstable_cache } from "next/cache"
 
 import { municipioCoords, type PuntoMapa } from "./geo"
-import { classifyProfile, limpiarFuente, movilWhatsapp, perfilDesdeDescripcion, tituloPuesto } from "./presentation"
+import { arreglarTexto, classifyProfile, limpiarFuente, movilWhatsapp, perfilDesdeDescripcion, tituloPuesto } from "./presentation"
 import type {
   DistribucionPerfil,
   Empresa,
@@ -34,7 +34,7 @@ const DASHBOARD_WEBHOOK = process.env.NAEM_N8N_DASHBOARD_WEBHOOK || ""
 const WEBHOOK_SECRET = process.env.NAEM_WEBHOOK_SECRET || ""
 
 function clean(value: unknown) {
-  return String(value ?? "").replace(/\s+/g, " ").trim()
+  return arreglarTexto(value).replace(/\s+/g, " ").trim()
 }
 
 function normalize(value: unknown) {
