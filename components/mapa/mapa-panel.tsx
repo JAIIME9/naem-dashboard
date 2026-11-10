@@ -7,8 +7,8 @@ import { ArrowRight, MapPin } from "lucide-react"
 
 import { FilterSelect } from "@/components/filter-select"
 import { PeriodSelector } from "@/components/period-selector"
-import { classifyProfile } from "@/lib/presentation"
-import type { PuntoMapa } from "@/lib/geo"
+import { buildActividadPoints } from "@/lib/geo"
+import { classifyProfile, filterOportunidadesPeriodo } from "@/lib/presentation"
 import type { Oportunidad, Periodo } from "@/lib/types"
 
 const ActividadMap = dynamic(() => import("./actividad-map"), {
@@ -21,14 +21,18 @@ const ActividadMap = dynamic(() => import("./actividad-map"), {
 })
 
 export function MapaPanel({
-  points,
-  oportunidades,
-  periodo,
+  oportunidades30,
+  periodoInicial,
 }: {
-  points: PuntoMapa[]
-  oportunidades: Oportunidad[]
-  periodo: Periodo
+  oportunidades30: Oportunidad[]
+  periodoInicial: Periodo
 }) {
+  const [periodo, setPeriodo] = useState<Periodo>(periodoInicial)
+  const oportunidades = useMemo(
+    () => (periodo === "30d" ? oportunidades30 : filterOportunidadesPeriodo(oportunidades30, periodo)),
+    [oportunidades30, periodo],
+  )
+  const points = useMemo(() => buildActividadPoints(oportunidades), [oportunidades])
   const [perfil, setPerfil] = useState("")
   const [provincia, setProvincia] = useState("")
 
@@ -81,7 +85,7 @@ export function MapaPanel({
           className="sm:w-40"
         />
         <div className="sm:ml-auto">
-          <PeriodSelector value={periodo} />
+          <PeriodSelector value={periodo} onChange={setPeriodo} />
         </div>
       </div>
 
