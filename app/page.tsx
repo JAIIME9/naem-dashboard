@@ -1,10 +1,4 @@
-import { PageHeader } from "@/components/page-header"
-import { PeriodSelector } from "@/components/period-selector"
-import { KpiCard } from "@/components/resumen/kpi-card"
-import { OportunidadesChart } from "@/components/resumen/oportunidades-chart"
-import { OportunidadesRecientes } from "@/components/resumen/oportunidades-recientes"
-import { PerfilesDonut } from "@/components/resumen/perfiles-donut"
-import { ZonasWidget } from "@/components/resumen/zonas-widget"
+import { ResumenPanel, type DatosPeriodo } from "@/components/resumen/resumen-panel"
 import {
   getKpis,
   getOportunidades,
@@ -18,9 +12,29 @@ import {
 } from "@/lib/presentation"
 import type { Periodo } from "@/lib/types"
 
+const PERIODOS: Periodo[] = ["hoy", "7d", "30d"]
+
 function normalizePeriodo(value: string | string[] | undefined): Periodo {
   const v = Array.isArray(value) ? value[0] : value
   return v === "hoy" || v === "7d" || v === "30d" ? v : "30d"
+}
+
+async function datosDelPeriodo(periodo: Periodo): Promise<DatosPeriodo> {
+  const [kpis, serie, recientes, oportunidades] = await Promise.all([
+    getKpis(periodo),
+    getSerieOportunidades(periodo),
+    getOportunidadesRecientes(6, periodo),
+    getOportunidades(),
+  ])
+
+  const delPeriodo = filterOportunidadesPeriodo(oportunidades, periodo)
+  return {
+    kpis,
+    serie,
+    recientes,
+    distribucion: buildProfileDistribution(delPeriodo),
+    provincias: buildProvinceActivity(delPeriodo),
+  }
 }
 
 export default async function ResumenPage({
@@ -31,42 +45,8 @@ export default async function ResumenPage({
   const { periodo: periodoParam } = await searchParams
   const periodo = normalizePeriodo(periodoParam)
 
-  const [kpis, serie, recientes, oportunidades] = await Promise.all([
-    getKpis(periodo),
-    getSerieOportunidades(periodo),
-    getOportunidadesRecientes(6, periodo),
-    getOportunidades(),
-  ])
+  // Se calculan los tres periodos de una vez para que el cambio en pantalla sea instantáneo.
+  const [hoy, semana, mes] = await Promise.all(PERIODOS.map(datosDelPeriodo))
 
-  const delPeriodo = filterOportunidadesPeriodo(oportunidades, periodo)
-  const distribucion = buildProfileDistribution(delPeriodo)
-  const provincias = buildProvinceActivity(delPeriodo)
-
-  return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6 p-5 sm:p-6 lg:p-8">
-      <PageHeader>
-        <PeriodSelector value={periodo} />
-      </PageHeader>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {kpis.map((kpi) => (
-          <KpiCard key={kpi.id} kpi={kpi} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <OportunidadesChart data={serie} periodo={periodo} />
-        </div>
-        <PerfilesDonut data={distribucion} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <OportunidadesRecientes data={recientes} />
-        </div>
-        <ZonasWidget data={provincias} />
-      </div>
-    </div>
-  )
+  return <ResumenPanel datos={{ hoy, "7d": semana, "30d": mes }} periodoInicial={periodo} />
 }
