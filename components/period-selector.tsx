@@ -12,7 +12,9 @@ const opciones: { value: Periodo; label: string }[] = [
   { value: "30d", label: "30 días" },
 ]
 
-export function PeriodSelector({ value }: { value: Periodo }) {
+// Con onChange el cambio es instantáneo: se resuelve en el navegador y solo se
+// actualiza la URL, sin pedir la página otra vez al servidor.
+export function PeriodSelector({ value, onChange }: { value: Periodo; onChange?: (periodo: Periodo) => void }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -22,11 +24,16 @@ export function PeriodSelector({ value }: { value: Periodo }) {
     (periodo: Periodo) => {
       const params = new URLSearchParams(searchParams.toString())
       params.set("periodo", periodo)
+      if (onChange) {
+        onChange(periodo)
+        window.history.replaceState(null, "", `${pathname}?${params.toString()}`)
+        return
+      }
       startTransition(() => {
         router.replace(`${pathname}?${params.toString()}`, { scroll: false })
       })
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, onChange],
   )
 
   return (

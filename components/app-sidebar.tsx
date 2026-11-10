@@ -14,6 +14,8 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
+      // Carga cada pestaña por adelantado para que al pulsarla se abra al instante.
+      prefetch
       aria-current={active ? "page" : undefined}
       className={cn(
         "group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
