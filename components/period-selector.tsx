@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useTransition } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { cn } from "@/lib/utils"
@@ -16,12 +16,15 @@ export function PeriodSelector({ value }: { value: Periodo }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [cargando, startTransition] = useTransition()
 
   const setPeriodo = useCallback(
     (periodo: Periodo) => {
       const params = new URLSearchParams(searchParams.toString())
       params.set("periodo", periodo)
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+      startTransition(() => {
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+      })
     },
     [router, pathname, searchParams],
   )
@@ -30,7 +33,11 @@ export function PeriodSelector({ value }: { value: Periodo }) {
     <div
       role="group"
       aria-label="Periodo"
-      className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-secondary/60 p-0.5"
+      aria-busy={cargando}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-secondary/60 p-0.5 transition-opacity",
+        cargando && "opacity-60",
+      )}
     >
       {opciones.map((o) => {
         const activo = o.value === value
