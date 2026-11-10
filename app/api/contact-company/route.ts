@@ -1,4 +1,7 @@
+import { revalidateTag } from "next/cache"
 import { NextResponse } from "next/server"
+
+import { DASHBOARD_TAG, olvidarDashboard } from "@/lib/live-data"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -185,6 +188,10 @@ export async function POST(request: Request) {
         { status: 422 },
       )
     }
+
+    // Que el Resumen y Empresas muestren la empresa como contactada sin esperar al refresco.
+    revalidateTag(DASHBOARD_TAG, { expire: 0 })
+    olvidarDashboard()
 
     return NextResponse.json({
       ok: true,
