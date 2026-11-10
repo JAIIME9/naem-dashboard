@@ -181,54 +181,128 @@ function normalizePrioridad(value: unknown): Prioridad {
   return s === "Alta" || s === "Baja" ? s : "Media"
 }
 
+// Solo se guardan los campos que usa la app. Antes se guardaba la respuesta
+// entera de n8n (con descripciones largas y campos vacíos) y, si pasaba de 2 MB,
+// Vercel no la cacheaba: cada clic esperaba a n8n y, si tardaba, salía todo a 0.
+const CAMPOS_APP = [
+  "id",
+  "oportunidad",
+  "titulo",
+  "empresa",
+  "empresaWeb",
+  "perfil",
+  "perfilDetectado",
+  "tipoPerfil",
+  "descripcion",
+  "url",
+  "fuente",
+  "fechaPublicacion",
+  "fechaDeteccion",
+  "opportunityKey",
+  "provincia",
+  "municipio",
+  "zona",
+  "estado",
+  "prioridad",
+  "notas",
+  "contactoEstado",
+  "emailContacto",
+  "telefonoContacto",
+  "emailVerificado",
+  "fuenteEmail",
+] as const
+
+const MAX_DESCRIPCION = 200
+
+function compactar(raw: RawOpportunity): RawOpportunity {
+  const out: RawOpportunity = {}
+  for (const campo of CAMPOS_APP) {
+    const v = raw[campo]
+    if (v === undefined || v === null || v === "") continue
+    out[campo] = campo === "descripcion" ? clean(v).slice(0, MAX_DESCRIPCION) : v
+  }
+  return out
+}
+
+export const DASHBOARD_TAG = "naem-dashboard"
+
 const fetchDashboardCached = unstable_cache(
   async (): Promise<DashboardPayload | null> => {
     if (!DASHBOARD_WEBHOOK || !WEBHOOK_SECRET) throw new Error("Falta la configuración del webhook")
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30_000)
+    let response: Response
+
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 20_000)
-      let response: Response
+      response = await fetch(DASHBOARD_WEBHOOK, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-naem-secret": WEBHOOK_SECRET,
+        },
+        body: JSON.stringify({}),
+        cache: "no-store",
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
 
-      try {
-        response = await fetch(DASHBOARD_WEBHOOK, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-naem-secret": WEBHOOK_SECRET,
-          },
-          body: JSON.stringify({}),
-          cache: "no-store",
-          signal: controller.signal,
-        })
-      } finally {
-        clearTimeout(timeout)
-      }
+    if (!response.ok) throw new Error(`Webhook HTTP ${response.status}`)
+    const data = (await response.json().catch(() => null)) as DashboardPayload | null
+    if (!data || data.ok !== true || !Array.isArray(data.oportunidades)) throw new Error("Respuesta incompleta del webhook")
 
-      if (!response.ok) throw new Error(`Webhook HTTP ${response.status}`)
-      const data = (await response.json().catch(() => null)) as DashboardPayload | null
-      if (!data || data.ok !== true || !Array.isArray(data.oportunidades)) throw new Error("Respuesta incompleta del webhook")
-
-      return {
-        ...data,
-        // La app solo trabaja con empresas identificadas y con email utilizable.
-        oportunidades: data.oportunidades.filter(rawContactable),
-        perfiles: Array.isArray(data.perfiles) ? data.perfiles : [],
-      }
-    } catch (error) {
-      throw error
+    return {
+      ok: true,
+      generatedAt: data.generatedAt,
+      // La app solo trabaja con empresas identificadas y con email utilizable.
+      oportunidades: data.oportunidades.filter(rawContactable).map(compactar),
+      perfiles: Array.isArray(data.perfiles) ? data.perfiles : [],
     }
   },
-  ["naem-dashboard-contactable-v1"],
-  { revalidate: 8 },
+  ["naem-dashboard-contactable-v2"],
+  // Se sirve al instante lo guardado y se refresca en segundo plano como mucho cada 2 minutos.
+  { revalidate: 120, tags: [DASHBOARD_TAG] },
 )
+
+// Copia en memoria de la última respuesta buena. Se devuelve al momento y, si
+// tiene más de un minuto, se pide otra a n8n en segundo plano. Así cambiar de
+// pestaña o de periodo no espera nunca a n8n, y si n8n tarda o falla se sigue
+// viendo lo último en vez de todo a 0.
+const REFRESCO_MS = 60_000
+let memoria: { data: DashboardPayload; at: number } | null = null
+let refrescando: Promise<DashboardPayload | null> | null = null
+
+function refrescarDashboard() {
+  refrescando ??= fetchDashboardCached()
+    .then((data) => {
+      if (data) memoria = { data, at: Date.now() }
+      return data
+    })
+    .finally(() => {
+      refrescando = null
+    })
+  return refrescando
+}
+
+export function olvidarDashboard() {
+  memoria = null
+}
 
 // Deduplica todas las llamadas de una misma navegación. Antes cada widget del
 // resumen disparaba su propio webhook de n8n, provocando varias ejecuciones por clic.
 const loadDashboard = cache(async (): Promise<DashboardPayload | null> => {
+  if (memoria) {
+    if (Date.now() - memoria.at > REFRESCO_MS) {
+      refrescarDashboard().catch((error) => console.error("NAEM: no se pudieron refrescar los datos de n8n", error))
+    }
+    return memoria.data
+  }
   try {
-    return await fetchDashboardCached()
-  } catch {
+    return await refrescarDashboard()
+  } catch (error) {
+    console.error("NAEM: no se pudieron leer los datos de n8n", error)
     return null
   }
 })
